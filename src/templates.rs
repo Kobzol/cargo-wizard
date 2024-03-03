@@ -1,6 +1,6 @@
 use crate::toml::{BuiltinProfile, TemplateEntry, TomlProfileTemplate, TomlTableTemplate};
 
-/// This template focuses on quick compile time.
+/// Template that focuses on quick compile time.
 pub fn fast_compile_template() -> TomlProfileTemplate {
     TomlProfileTemplate {
         inherits: BuiltinProfile::Dev,
@@ -10,7 +10,7 @@ pub fn fast_compile_template() -> TomlProfileTemplate {
     }
 }
 
-/// This template focuses on maximum runtime performance.
+/// Template that focuses on maximum runtime performance.
 pub fn fast_runtime_template() -> TomlProfileTemplate {
     TomlProfileTemplate {
         inherits: BuiltinProfile::Release,
@@ -24,7 +24,7 @@ pub fn fast_runtime_template() -> TomlProfileTemplate {
     }
 }
 
-/// This template focuses on minimal binary size.
+/// Template that template focuses on minimal binary size.
 pub fn min_size_template() -> TomlProfileTemplate {
     TomlProfileTemplate {
         inherits: BuiltinProfile::Release,

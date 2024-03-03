@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
-use toml_edit::{table, value, Document, Item};
+use toml_edit::{Document, Item, table, value};
 
 use crate::toml::{BuiltinProfile, TemplateEntry};
 use crate::TomlProfileTemplate;
@@ -79,6 +79,7 @@ fn is_builtin_profile(name: &str) -> bool {
     matches!(name, "dev" | "release")
 }
 
+/// Parses a Cargo.toml manifest from disk.
 pub fn parse_manifest(path: &Path) -> anyhow::Result<ParsedManifest> {
     let manifest = std::fs::read_to_string(path).context("Cannot read Cargo.toml manifest")?;
     let manifest = manifest
