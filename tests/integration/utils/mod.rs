@@ -56,6 +56,13 @@ impl Drop for CargoProject {
             // Do not delete the directory if an error has occurred
             let path = std::mem::replace(&mut self._tempdir, TempDir::new().unwrap()).into_path();
             eprintln!("Directory of failed test located at: {}", path.display());
+        } else {
+            Cmd::default()
+                .args(&["cargo", "check"])
+                .cwd(&self.dir)
+                .run()
+                .expect("Cannot run cargo check on the test project")
+                .assert_ok();
         }
     }
 }
