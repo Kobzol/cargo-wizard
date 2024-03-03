@@ -2,11 +2,21 @@ use std::fmt::{Display, Formatter};
 
 use anyhow::Context;
 use clap::ValueEnum;
+use console::Style;
 use inquire::{min_length, Select, Text};
+use inquire::ui::{Color, RenderConfig};
 
 use cargo_wizard::{parse_manifest, ParsedManifest, resolve_manifest_path};
 
 use crate::cli::PredefinedTemplate;
+
+fn template_style() -> Style {
+    Style::new().cyan()
+}
+
+fn profile_style() -> Style {
+    Style::new().green()
+}
 
 pub fn dialog_root() -> anyhow::Result<()> {
     let template = dialog_template()?;
@@ -17,12 +27,13 @@ pub fn dialog_root() -> anyhow::Result<()> {
     manifest.write(&manifest_path)?;
 
     println!(
-        "Template {} applied to profile {profile}",
-        match template {
+        "Template {} applied to profile {}",
+        template_style().apply_to(match template {
             PredefinedTemplate::FastCompile => "FastCompile",
             PredefinedTemplate::FastRuntime => "FastRuntime",
             PredefinedTemplate::MinSize => "MinSize",
-        }
+        }),
+        profile_style().apply_to(profile)
     );
 
     Ok(())
@@ -61,6 +72,7 @@ fn dialog_profile(manifest: &ParsedManifest) -> anyhow::Result<String> {
         "Select the profile that you want to update/create:",
         profiles,
     )
+    .with_render_config(profile_render_config())
     .prompt()
     .context("Cannot select template")?;
 
@@ -77,6 +89,7 @@ fn dialog_profile(manifest: &ParsedManifest) -> anyhow::Result<String> {
 fn dialog_profile_name() -> anyhow::Result<String> {
     Ok(Text::new("Select profile name")
         .with_validator(min_length!(1))
+        .with_render_config(profile_render_config())
         .prompt()?)
 }
 
@@ -101,8 +114,27 @@ fn dialog_template() -> anyhow::Result<PredefinedTemplate> {
             .map(|template| Template(template.clone()))
             .collect(),
     )
+    .with_render_config(template_render_config())
     .prompt()
     .context("Cannot select template")?;
 
     Ok(selected.0)
+}
+
+fn template_render_config() -> RenderConfig<'static> {
+    let mut render_config = RenderConfig::default_colored();
+    render_config.answer = render_config.option.with_fg(Color::DarkCyan);
+    render_config.selected_option = render_config
+        .selected_option
+        .map(|s| s.with_fg(Color::DarkCyan));
+    render_config
+}
+
+fn profile_render_config() -> RenderConfig<'static> {
+    let mut render_config = RenderConfig::default_colored();
+    render_config.answer = render_config.option.with_fg(Color::DarkGreen);
+    render_config.selected_option = render_config
+        .selected_option
+        .map(|s| s.with_fg(Color::DarkGreen));
+    render_config
 }

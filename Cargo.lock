@@ -105,6 +105,7 @@ dependencies = [
  "anyhow",
  "cargo_metadata",
  "clap",
+ "console",
  "inquire",
  "insta",
  "tempfile",
@@ -186,6 +187,7 @@ dependencies = [
  "encode_unicode",
  "lazy_static",
  "libc",
+ "unicode-width",
  "windows-sys 0.52.0",
 ]
 
