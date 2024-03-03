@@ -1,0 +1,38 @@
+## Based on https://github.com/actions-rs/meta/blob/master/recipes/quickstart.md
+name: Check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust-version: [ stable, beta, nightly ]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust-version }}
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Build
+        run: cargo build --workspace --all-targets
+
+      - name: Run tests
+        run: cargo test --workspace --all-targets
+
+      - name: Lint
+        run: cargo clippy --workspace --all-targets
+
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
