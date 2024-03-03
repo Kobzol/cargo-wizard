@@ -67,9 +67,6 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     match args {
         Args::Wizard(args) => match args.subcmd {
-            None => {
-                todo!();
-            }
             Some(SubCommand::Apply {
                 args,
                 manifest_path,
@@ -82,6 +79,9 @@ fn main() -> anyhow::Result<()> {
                 let template = args.template.resolve_to_template();
                 let manifest = manifest.apply_profile(&args.profile, template)?;
                 manifest.write(&manifest_path)?;
+            }
+            None => {
+                todo!();
             }
         },
     }

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
-use toml_edit::{Document, Item, table, value};
+use toml_edit::{table, value, Document, Item};
 
 use crate::toml::{BuiltinProfile, TemplateEntry};
 use crate::TomlProfileTemplate;
