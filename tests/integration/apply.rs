@@ -1,4 +1,4 @@
-use crate::utils::{init_cargo_project, Cmd, OutputExt};
+use crate::utils::{Cmd, init_cargo_project, OutputExt};
 
 #[test]
 fn apply_explicit_manifest_path() -> anyhow::Result<()> {
@@ -90,6 +90,140 @@ fn apply_missing_builtin() -> anyhow::Result<()> {
 
     [profile.dev]
     debug = 0
+    "###);
+
+    Ok(())
+}
+
+#[test]
+fn apply_existing_builtin() -> anyhow::Result<()> {
+    let mut project = init_cargo_project()?;
+
+    project.manifest(
+        r#"
+[package]
+name = "foo"
+version = "0.1.0"
+edition = "2021"
+
+[profile.dev]
+debug = 1
+"#,
+    );
+
+    project
+        .cmd(&["apply", "dev", "fast-compile"])
+        .run()?
+        .assert_ok();
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.dev]
+    debug = 0
+    "###);
+
+    Ok(())
+}
+
+#[test]
+fn apply_missing_custom() -> anyhow::Result<()> {
+    let mut project = init_cargo_project()?;
+
+    project
+        .cmd(&["apply", "custom1", "fast-compile"])
+        .run()?
+        .assert_ok();
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.custom1]
+    inherits = "dev"
+    debug = 0
+    "###);
+
+    Ok(())
+}
+
+#[test]
+fn apply_existing_custom() -> anyhow::Result<()> {
+    let mut project = init_cargo_project()?;
+
+    project.manifest(
+        r#"
+[package]
+name = "foo"
+version = "0.1.0"
+edition = "2021"
+
+[profile.custom1]
+inherits = "dev"
+debug = 1
+"#,
+    );
+
+    project
+        .cmd(&["apply", "custom1", "fast-compile"])
+        .run()?
+        .assert_ok();
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.custom1]
+    inherits = "dev"
+    debug = 0
+    "###);
+
+    Ok(())
+}
+
+#[test]
+fn apply_existing_keep_formatting() -> anyhow::Result<()> {
+    let mut project = init_cargo_project()?;
+
+    project.manifest(
+        r#"
+[package]
+name = "foo"
+version = "0.1.0"
+edition = "2021"
+
+[profile.dev]
+
+lto =      "thin"
+
+debug = 1   # Foo
+
+codegen-units    = 10
+"#,
+    );
+
+    project
+        .cmd(&["apply", "dev", "fast-compile"])
+        .run()?
+        .assert_ok();
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.dev]
+
+    lto =      "thin"
+
+    debug = 0   # Foo
+
+    codegen-units    = 10
     "###);
 
     Ok(())

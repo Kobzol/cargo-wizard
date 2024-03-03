@@ -15,6 +15,7 @@ pub struct TomlProfileTemplate {
     pub template: TomlTableTemplate,
 }
 
+#[derive(Clone, Debug)]
 pub enum TomlValue {
     Int(i64),
     Bool(bool),

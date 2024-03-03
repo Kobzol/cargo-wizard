@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
-use toml_edit::{table, value, Document, Item};
+use toml_edit::{Document, Item, table, value};
 
-use crate::toml::BuiltinProfile;
+use crate::toml::{BuiltinProfile, TomlValue};
 use crate::TomlProfileTemplate;
 
 #[derive(Debug)]
@@ -41,36 +41,34 @@ impl ParsedManifest {
                 anyhow::anyhow!("The profile.{name} table in Cargo.toml is not a table")
             })?;
 
+        let mut values = template.template.fields.clone();
+
         if !is_builtin_profile(name) {
             let inherits = match template.inherits {
                 BuiltinProfile::Dev => "dev",
                 BuiltinProfile::Release => "release",
             };
 
-            // Add "inherits" as the first key of the table
-            let items: Vec<_> = profile_table
-                .iter()
-                .map(|(n, i)| (n.to_string(), i.clone()))
-                .collect();
-            profile_table.clear();
-            if !items.iter().any(|(name, _)| *name == "inherits") {
-                profile_table.insert("inherits", value(inherits));
-            }
-            for (name, item) in items {
-                profile_table.insert(&name, item);
-            }
+            // Add "inherits" to the table
+            values.insert(
+                0,
+                (
+                    "inherits".to_string(),
+                    TomlValue::String(inherits.to_string()),
+                ),
+            );
         }
 
-        for (key, val) in &template.template.fields {
+        for (key, val) in values {
             let mut new_value = val.to_toml_value();
 
-            if let Some(existing_item) = profile_table.get_mut(key) {
+            if let Some(existing_item) = profile_table.get_mut(&key) {
                 if let Some(value) = existing_item.as_value() {
                     *new_value.decor_mut() = value.decor().clone();
                 }
                 *existing_item = value(new_value);
             } else {
-                profile_table.insert(key, value(new_value));
+                profile_table.insert(&key, value(new_value));
             }
         }
 
