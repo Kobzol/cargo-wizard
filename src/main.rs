@@ -3,10 +3,13 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Parser;
 
-use cargo_wizard::{
-    fast_compile_template, fast_runtime_template, min_size_template, parse_manifest,
-    resolve_manifest_path, TomlProfileTemplate,
-};
+use cargo_wizard::{parse_manifest, resolve_manifest_path};
+
+use crate::cli::PredefinedTemplate;
+use crate::dialog::dialog_root;
+
+mod cli;
+mod dialog;
 
 #[derive(clap::Parser, Debug)]
 #[clap(author, version, about)]
@@ -15,26 +18,6 @@ use cargo_wizard::{
 enum Args {
     #[clap(author, version, about)]
     Wizard(InnerArgs),
-}
-
-#[derive(clap::ValueEnum, Clone, Debug)]
-enum PredefinedProfile {
-    /// Profile designed for fast compilation times.
-    FastCompile,
-    /// Profile designed for fast runtime performance.
-    FastRuntime,
-    /// Profile designed for minimal binary size.
-    MinSize,
-}
-
-impl PredefinedProfile {
-    fn resolve_to_template(&self) -> TomlProfileTemplate {
-        match self {
-            PredefinedProfile::FastCompile => fast_compile_template(),
-            PredefinedProfile::FastRuntime => fast_runtime_template(),
-            PredefinedProfile::MinSize => min_size_template(),
-        }
-    }
 }
 
 #[derive(clap::Parser, Debug)]
@@ -48,7 +31,7 @@ struct ProfileArgs {
     /// Cargo profile that should be created or modified.
     profile: String,
     /// Template that will be applied to the selected Cargo profile.
-    template: PredefinedProfile,
+    template: PredefinedTemplate,
 }
 
 #[derive(clap::Parser, Debug)]
@@ -81,7 +64,7 @@ fn main() -> anyhow::Result<()> {
                 manifest.write(&manifest_path)?;
             }
             None => {
-                todo!();
+                dialog_root().context("Interactive dialog failed")?;
             }
         },
     }

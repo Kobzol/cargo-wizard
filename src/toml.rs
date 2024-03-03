@@ -34,16 +34,6 @@ pub struct TomlTableTemplate {
     pub fields: Vec<TemplateEntry>,
 }
 
-pub enum BuiltinProfile {
-    Dev,
-    Release,
-}
-
-pub struct TomlProfileTemplate {
-    pub inherits: BuiltinProfile,
-    pub template: TomlTableTemplate,
-}
-
 #[derive(Clone, Debug)]
 pub enum TomlValue {
     Int(i64),

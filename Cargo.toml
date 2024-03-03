@@ -33,3 +33,6 @@ toml_edit = "0.22.6"
 [dev-dependencies]
 tempfile = "3.10.1"
 insta = "1.35.1"
+
+[profile.dev]
+debug = 0

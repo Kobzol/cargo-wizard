@@ -2,10 +2,9 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
-use toml_edit::{table, value, Document, Item};
+use toml_edit::{Document, Item, table, value};
 
-use crate::toml::{BuiltinProfile, TemplateEntry};
-use crate::TomlProfileTemplate;
+use crate::toml::{TemplateEntry, TomlTableTemplate};
 
 #[derive(Debug)]
 pub struct ParsedProfile {
@@ -13,13 +12,19 @@ pub struct ParsedProfile {
     items: HashMap<String, Item>,
 }
 
+/// Manifest parsed out of a Cargo.toml file.
 #[derive(Debug)]
 pub struct ParsedManifest {
     document: Document,
+    /// Original profiles present in the manifest, e.g. `[profile.dev]`.
     profiles: HashMap<String, ParsedProfile>,
 }
 
 impl ParsedManifest {
+    pub fn get_original_profiles(&self) -> &HashMap<String, ParsedProfile> {
+        &self.profiles
+    }
+
     pub fn apply_profile(
         mut self,
         name: &str,
@@ -75,10 +80,6 @@ impl ParsedManifest {
     }
 }
 
-fn is_builtin_profile(name: &str) -> bool {
-    matches!(name, "dev" | "release")
-}
-
 /// Parses a Cargo.toml manifest from disk.
 pub fn parse_manifest(path: &Path) -> anyhow::Result<ParsedManifest> {
     let manifest = std::fs::read_to_string(path).context("Cannot read Cargo.toml manifest")?;
@@ -115,6 +116,10 @@ pub fn parse_manifest(path: &Path) -> anyhow::Result<ParsedManifest> {
     })
 }
 
+pub fn is_builtin_profile(name: &str) -> bool {
+    matches!(name, "dev" | "release")
+}
+
 /// Tries to resolve the workspace root manifest (Cargo.toml) path from the current directory.
 pub fn resolve_manifest_path() -> anyhow::Result<PathBuf> {
     let cmd = cargo_metadata::MetadataCommand::new();
@@ -126,4 +131,14 @@ pub fn resolve_manifest_path() -> anyhow::Result<PathBuf> {
         .into_std_path_buf()
         .join("Cargo.toml");
     Ok(manifest_path)
+}
+
+pub enum BuiltinProfile {
+    Dev,
+    Release,
+}
+
+pub struct TomlProfileTemplate {
+    pub inherits: BuiltinProfile,
+    pub template: TomlTableTemplate,
 }
