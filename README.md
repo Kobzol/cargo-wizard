@@ -1,4 +1,4 @@
-# `cargo-wizard` [![Build Status]][actions] [![Latest Version]][crates.io]
+# cargo-wizard [![Build Status]][actions] [![Latest Version]][crates.io]
 
 [Build Status]: https://github.com/kobzol/cargo-wizard/actions/workflows/check.yml/badge.svg
 
