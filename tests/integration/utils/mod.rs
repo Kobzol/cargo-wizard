@@ -11,8 +11,11 @@ pub struct CargoProject {
 }
 
 impl CargoProject {
-    pub fn cmd(&self) -> Cmd {
-        Cmd::default().cwd(&self.dir).args(&["cargo", "wizard"])
+    pub fn cmd(&self, args: &[&str]) -> Cmd {
+        Cmd::default()
+            .cwd(&self.dir)
+            .args(&["cargo", "wizard"])
+            .args(args)
     }
 
     pub fn path<P: Into<PathBuf>>(&self, path: P) -> PathBuf {
@@ -155,11 +158,23 @@ pub fn init_cargo_project() -> anyhow::Result<CargoProject> {
 
     println!("Created Cargo project {} at {}", name, path.display());
 
-    Ok(CargoProject {
+    let mut project = CargoProject {
         name: name.to_string(),
         dir: path,
         _tempdir: dir,
-    })
+    };
+
+    // Normalize the manifest to avoid any surprises
+    project.manifest(
+        r#"
+[package]
+name = "foo"
+version = "0.1.0"
+edition = "2021"
+"#,
+    );
+
+    Ok(project)
 }
 
 fn debug_target_dir() -> PathBuf {
