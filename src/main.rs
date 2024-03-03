@@ -1,8 +1,11 @@
 use std::path::PathBuf;
 
+use anyhow::Context;
 use clap::Parser;
 
-use cargo_wizard::{fast_compile_template, parse_manifest, TomlProfileTemplate};
+use cargo_wizard::{
+    fast_compile_template, parse_manifest, resolve_manifest_path, TomlProfileTemplate,
+};
 
 #[derive(clap::Parser, Debug)]
 #[clap(author, version, about)]
@@ -56,12 +59,17 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     match args {
         Args::Wizard(args) => match args.subcmd {
-            None => {}
+            None => {
+                todo!();
+            }
             Some(SubCommand::Apply {
                 args,
                 manifest_path,
             }) => {
-                let manifest_path = manifest_path.unwrap();
+                let manifest_path = match manifest_path {
+                    Some(path) => path,
+                    None => resolve_manifest_path().context("Cannot resolve Cargo.toml path")?,
+                };
                 let manifest = parse_manifest(&manifest_path)?;
                 let template = args.template.resolve_to_template();
                 let manifest = manifest.apply_profile(&args.profile, template)?;

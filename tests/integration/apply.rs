@@ -1,4 +1,4 @@
-use crate::utils::{init_cargo_project, OutputExt};
+use crate::utils::{Cmd, init_cargo_project, OutputExt};
 
 #[test]
 fn apply_explicit_manifest_path() -> anyhow::Result<()> {
@@ -15,13 +15,15 @@ edition = "2021"
 "#,
     );
     project
-        .run(&[
+        .cmd()
+        .args(&[
             "apply",
             "dev",
             "fast-compile",
             "--manifest-path",
             manifest_path,
-        ])?
+        ])
+        .run()?
         .assert_ok();
     insta::assert_snapshot!(project.read(manifest_path), @r###"
 
@@ -32,6 +34,43 @@ edition = "2021"
 
     [profile.dev]
     debug = 0
+    "###);
+
+    Ok(())
+}
+
+#[test]
+fn resolve_workspace_root() -> anyhow::Result<()> {
+    let mut project = init_cargo_project()?;
+    project.file(
+        "bar/Cargo.toml",
+        r#"
+[package]
+name = "bar"
+version = "0.1.0"
+edition = "2021"
+"#,
+    );
+    project.file("bar/src/lib.rs", "");
+    project.manifest(
+        r#"
+[workspace]
+members = ["bar"]
+"#,
+    );
+
+    project
+        .cmd()
+        .args(&["apply", "dev", "fast-compile"])
+        .cwd(&project.path("bar"))
+        .run()?
+        .assert_ok();
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+[workspace]
+members = ["bar"]
+
+[profile.dev]
+debug = 0
     "###);
 
     Ok(())

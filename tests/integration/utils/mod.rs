@@ -11,34 +11,8 @@ pub struct CargoProject {
 }
 
 impl CargoProject {
-    pub fn run(&self, args: &[&str]) -> anyhow::Result<Output> {
-        self.run_with_input(args, &[])
-    }
-
-    pub fn run_with_input(&self, args: &[&str], stdin: &[u8]) -> anyhow::Result<Output> {
-        let mut command = Command::new("cargo");
-        command.arg("wizard");
-        for arg in args {
-            command.arg(arg);
-        }
-        command.current_dir(&self.dir);
-        command.stdin(Stdio::piped());
-        command.stdout(Stdio::piped());
-        command.stderr(Stdio::piped());
-
-        let path = std::env::var("PATH").unwrap_or_default();
-        let path = format!("{}:{}", debug_target_dir().display(), path);
-
-        command.env("PATH", path);
-
-        let mut child = command.spawn()?;
-        {
-            let mut child_stdin = child.stdin.take().unwrap();
-            child_stdin.write_all(stdin)?;
-        }
-
-        let output = child.wait_with_output()?;
-        Ok(output)
+    pub fn cmd(&self) -> Cmd {
+        Cmd::default().cwd(&self.dir).args(&["cargo", "wizard"])
     }
 
     pub fn path<P: Into<PathBuf>>(&self, path: P) -> PathBuf {
@@ -67,7 +41,7 @@ impl CargoProject {
         self.path("Cargo.toml")
     }
 
-    pub fn get_manifest(&mut self) -> String {
+    pub fn read_manifest(&mut self) -> String {
         let path = self.manifest_path();
         self.read(path)
     }
@@ -79,6 +53,54 @@ impl Drop for CargoProject {
             // Do not delete the directory if an error has occurred
             let path = std::mem::replace(&mut self._tempdir, TempDir::new().unwrap()).into_path();
             eprintln!("Directory of failed test located at: {}", path.display());
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct Cmd {
+    arguments: Vec<String>,
+    cwd: Option<PathBuf>,
+    stdin: Vec<u8>,
+}
+
+impl Cmd {
+    pub fn run(self) -> anyhow::Result<Output> {
+        let mut command = Command::new(&self.arguments[0]);
+        for arg in &self.arguments[1..] {
+            command.arg(arg);
+        }
+        if let Some(cwd) = self.cwd {
+            command.current_dir(&cwd);
+        }
+        command.stdin(Stdio::piped());
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
+
+        let path = std::env::var("PATH").unwrap_or_default();
+        let path = format!("{}:{}", debug_target_dir().display(), path);
+
+        command.env("PATH", path);
+
+        let mut child = command.spawn()?;
+        {
+            let mut child_stdin = child.stdin.take().unwrap();
+            child_stdin.write_all(&self.stdin)?;
+        }
+
+        let output = child.wait_with_output()?;
+        Ok(output)
+    }
+
+    pub fn args(mut self, args: &[&str]) -> Self {
+        self.arguments.extend(args.iter().map(|s| s.to_string()));
+        self
+    }
+
+    pub fn cwd(self, cwd: &Path) -> Self {
+        Self {
+            cwd: Some(cwd.to_path_buf()),
+            ..self
         }
     }
 }

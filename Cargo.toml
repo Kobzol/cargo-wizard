@@ -26,6 +26,7 @@ include = [
 [dependencies]
 anyhow = "1.0.80"
 clap = { version = "4.5.1", features = ["derive"] }
+cargo_metadata = "0.18.1"
 inquire = "0.7.0"
 toml_edit = "0.22.6"
 

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use toml_edit::{table, value, Document, Item};
@@ -120,4 +120,17 @@ pub fn parse_manifest(path: &Path) -> anyhow::Result<ParsedManifest> {
         profiles,
         document: manifest,
     })
+}
+
+/// Tries to resolve the workspace root manifest (Cargo.toml) path from the current directory.
+pub fn resolve_manifest_path() -> anyhow::Result<PathBuf> {
+    let cmd = cargo_metadata::MetadataCommand::new();
+    let metadata = cmd
+        .exec()
+        .map_err(|error| anyhow::anyhow!("Cannot get cargo metadata: {:?}", error))?;
+    let manifest_path = metadata
+        .workspace_root
+        .into_std_path_buf()
+        .join("Cargo.toml");
+    Ok(manifest_path)
 }
