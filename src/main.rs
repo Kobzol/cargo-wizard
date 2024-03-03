@@ -4,10 +4,13 @@ use clap::Parser;
 
 use cargo_wizard::{fast_compile_template, parse_manifest, TomlProfileTemplate};
 
-#[derive(clap::Parser)]
-struct Args {
-    #[clap(subcommand)]
-    subcmd: Option<SubCommand>,
+#[derive(clap::Parser, Debug)]
+#[clap(author, version, about)]
+#[clap(bin_name("cargo"))]
+#[clap(disable_help_subcommand(true))]
+enum Args {
+    #[clap(author, version, about)]
+    Wizard(InnerArgs),
 }
 
 #[derive(clap::ValueEnum, Clone, Debug)]
@@ -24,6 +27,12 @@ impl PredefinedProfile {
 }
 
 #[derive(clap::Parser, Debug)]
+struct InnerArgs {
+    #[clap(subcommand)]
+    subcmd: Option<SubCommand>,
+}
+
+#[derive(clap::Parser, Debug)]
 struct ProfileArgs {
     /// Cargo profile that should be created or modified.
     profile: String,
@@ -33,7 +42,7 @@ struct ProfileArgs {
 
 #[derive(clap::Parser, Debug)]
 enum SubCommand {
-    Set {
+    Apply {
         #[clap(flatten)]
         args: ProfileArgs,
         /// Path to a Cargo.toml manifest.
@@ -45,18 +54,20 @@ enum SubCommand {
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    match args.subcmd {
-        None => {}
-        Some(SubCommand::Set {
-            args,
-            manifest_path,
-        }) => {
-            let manifest_path = manifest_path.unwrap();
-            let manifest = parse_manifest(&manifest_path)?;
-            let template = args.template.resolve_to_template();
-            let manifest = manifest.apply_profile(&args.profile, template)?;
-            manifest.write(&manifest_path)?;
-        }
+    match args {
+        Args::Wizard(args) => match args.subcmd {
+            None => {}
+            Some(SubCommand::Apply {
+                args,
+                manifest_path,
+            }) => {
+                let manifest_path = manifest_path.unwrap();
+                let manifest = parse_manifest(&manifest_path)?;
+                let template = args.template.resolve_to_template();
+                let manifest = manifest.apply_profile(&args.profile, template)?;
+                manifest.write(&manifest_path)?;
+            }
+        },
     }
 
     Ok(())

@@ -25,13 +25,15 @@ impl ParsedManifest {
         name: &str,
         template: TomlProfileTemplate,
     ) -> anyhow::Result<Self> {
-        let mut profiles_table = self
+        let profiles_table = self
             .document
             .entry("profile")
             .or_insert(table())
             .as_table_mut()
             .ok_or_else(|| anyhow::anyhow!("The profile item in Cargo.toml is not a table"))?;
-        let mut profile_table = profiles_table
+        profiles_table.set_dotted(true);
+
+        let profile_table = profiles_table
             .entry(name)
             .or_insert(table())
             .as_table_mut()
@@ -62,7 +64,7 @@ impl ParsedManifest {
         for (key, val) in &template.template.fields {
             let mut new_value = val.to_toml_value();
 
-            if let Some(existing_item) = profile_table.get_mut(&key) {
+            if let Some(existing_item) = profile_table.get_mut(key) {
                 if let Some(value) = existing_item.as_value() {
                     *new_value.decor_mut() = value.decor().clone();
                 }
@@ -87,19 +89,18 @@ fn is_builtin_profile(name: &str) -> bool {
 
 pub fn parse_manifest(path: &Path) -> anyhow::Result<ParsedManifest> {
     let manifest = std::fs::read_to_string(path).context("Cannot read Cargo.toml manifest")?;
-    let mut manifest = manifest
+    let manifest = manifest
         .parse::<Document>()
         .context("Cannot parse Cargo.toml manifest")?;
 
     let profiles = if let Some(profiles) = manifest.get("profile").and_then(|p| p.as_table_like()) {
         profiles
             .iter()
-            .into_iter()
             .filter_map(|(name, table)| table.as_table().map(|t| (name, t)))
             .map(|(name, table)| {
                 let name = name.to_string();
 
-                let mut items = table
+                let items = table
                     .iter()
                     .map(|(name, item)| (name.to_string(), item.clone()))
                     .collect();

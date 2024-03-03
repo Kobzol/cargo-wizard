@@ -3,6 +3,24 @@ name = "cargo-wizard"
 version = "0.1.0"
 edition = "2021"
 
+description = "Cargo subcommand for applying Cargo profile templates."
+repository = "https://github.com/kobzol/cargo-wizard"
+authors = ["Jakub Beránek <berykubik@gmail.com>"]
+keywords = [
+    "cargo",
+    "profile",
+    "template"
+]
+categories = ["development-tools::cargo-plugins"]
+
+readme = "README.md"
+license = "MIT"
+include = [
+    "src/**/*.rs",
+    "Cargo.toml",
+    "README.md"
+]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -10,3 +28,7 @@ anyhow = "1.0.80"
 clap = { version = "4.5.1", features = ["derive"] }
 inquire = "0.7.0"
 toml_edit = "0.22.6"
+
+[dev-dependencies]
+tempfile = "3.10.1"
+insta = "1.35.1"
