@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
-use toml_edit::{Document, Item, table, value};
+use toml_edit::{table, value, Document, Item};
 
-use crate::toml::{BuiltinProfile, TomlValue};
+use crate::toml::{BuiltinProfile, TemplateEntry};
 use crate::TomlProfileTemplate;
 
 #[derive(Debug)]
@@ -50,25 +50,19 @@ impl ParsedManifest {
             };
 
             // Add "inherits" to the table
-            values.insert(
-                0,
-                (
-                    "inherits".to_string(),
-                    TomlValue::String(inherits.to_string()),
-                ),
-            );
+            values.insert(0, TemplateEntry::string("inherits", inherits));
         }
 
-        for (key, val) in values {
-            let mut new_value = val.to_toml_value();
+        for entry in values {
+            let mut new_value = entry.value.to_toml_value();
 
-            if let Some(existing_item) = profile_table.get_mut(&key) {
+            if let Some(existing_item) = profile_table.get_mut(&entry.name) {
                 if let Some(value) = existing_item.as_value() {
                     *new_value.decor_mut() = value.decor().clone();
                 }
                 *existing_item = value(new_value);
             } else {
-                profile_table.insert(&key, value(new_value));
+                profile_table.insert(&entry.name, value(new_value));
             }
         }
 

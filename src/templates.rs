@@ -1,12 +1,42 @@
-use std::string::ToString;
+use crate::toml::{BuiltinProfile, TemplateEntry, TomlProfileTemplate, TomlTableTemplate};
 
-use crate::toml::{BuiltinProfile, TomlProfileTemplate, TomlTableTemplate, TomlValue};
-
+/// This template focuses on quick compile time.
 pub fn fast_compile_template() -> TomlProfileTemplate {
     TomlProfileTemplate {
         inherits: BuiltinProfile::Dev,
         template: TomlTableTemplate {
-            fields: vec![("debug".to_string(), TomlValue::Int(0))],
+            fields: vec![TemplateEntry::int("debug", 0)],
+        },
+    }
+}
+
+/// This template focuses on maximum runtime performance.
+pub fn fast_runtime_template() -> TomlProfileTemplate {
+    TomlProfileTemplate {
+        inherits: BuiltinProfile::Release,
+        template: TomlTableTemplate {
+            fields: vec![
+                TemplateEntry::bool("lto", true),
+                TemplateEntry::int("codegen-units", 1),
+                TemplateEntry::string("panic", "abort"),
+            ],
+        },
+    }
+}
+
+/// This template focuses on minimal binary size.
+pub fn min_size_template() -> TomlProfileTemplate {
+    TomlProfileTemplate {
+        inherits: BuiltinProfile::Release,
+        template: TomlTableTemplate {
+            fields: vec![
+                TemplateEntry::int("debug", 0),
+                TemplateEntry::bool("strip", true),
+                TemplateEntry::string("opt-level", "z"),
+                TemplateEntry::bool("lto", true),
+                TemplateEntry::int("codegen-units", 1),
+                TemplateEntry::string("panic", "abort"),
+            ],
         },
     }
 }

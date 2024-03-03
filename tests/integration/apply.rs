@@ -1,4 +1,4 @@
-use crate::utils::{Cmd, init_cargo_project, OutputExt};
+use crate::utils::{init_cargo_project, OutputExt};
 
 #[test]
 fn apply_explicit_manifest_path() -> anyhow::Result<()> {
@@ -224,6 +224,59 @@ codegen-units    = 10
     debug = 0   # Foo
 
     codegen-units    = 10
+    "###);
+
+    Ok(())
+}
+
+#[test]
+fn apply_fast_runtime_template() -> anyhow::Result<()> {
+    let mut project = init_cargo_project()?;
+
+    project
+        .cmd(&["apply", "custom", "fast-runtime"])
+        .run()?
+        .assert_ok();
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.custom]
+    inherits = "release"
+    lto = true
+    codegen-units = 1
+    panic = "abort"
+    "###);
+
+    Ok(())
+}
+
+#[test]
+fn apply_min_size_template() -> anyhow::Result<()> {
+    let mut project = init_cargo_project()?;
+
+    project
+        .cmd(&["apply", "custom", "min-size"])
+        .run()?
+        .assert_ok();
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.custom]
+    inherits = "release"
+    debug = 0
+    strip = true
+    opt-level = "z"
+    lto = true
+    codegen-units = 1
+    panic = "abort"
     "###);
 
     Ok(())

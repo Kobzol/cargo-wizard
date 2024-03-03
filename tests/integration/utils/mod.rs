@@ -5,7 +5,7 @@ use std::process::{Command, Output, Stdio};
 use tempfile::TempDir;
 
 pub struct CargoProject {
-    name: String,
+    _name: String,
     pub dir: PathBuf,
     _tempdir: TempDir,
 }
@@ -159,7 +159,7 @@ pub fn init_cargo_project() -> anyhow::Result<CargoProject> {
     println!("Created Cargo project {} at {}", name, path.display());
 
     let mut project = CargoProject {
-        name: name.to_string(),
+        _name: name.to_string(),
         dir: path,
         _tempdir: dir,
     };

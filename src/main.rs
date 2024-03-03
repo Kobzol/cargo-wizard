@@ -4,7 +4,8 @@ use anyhow::Context;
 use clap::Parser;
 
 use cargo_wizard::{
-    fast_compile_template, parse_manifest, resolve_manifest_path, TomlProfileTemplate,
+    fast_compile_template, fast_runtime_template, min_size_template, parse_manifest,
+    resolve_manifest_path, TomlProfileTemplate,
 };
 
 #[derive(clap::Parser, Debug)]
@@ -18,13 +19,20 @@ enum Args {
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 enum PredefinedProfile {
+    /// Profile designed for fast compilation times.
     FastCompile,
+    /// Profile designed for fast runtime performance.
+    FastRuntime,
+    /// Profile designed for minimal binary size.
+    MinSize,
 }
 
 impl PredefinedProfile {
     fn resolve_to_template(&self) -> TomlProfileTemplate {
         match self {
             PredefinedProfile::FastCompile => fast_compile_template(),
+            PredefinedProfile::FastRuntime => fast_runtime_template(),
+            PredefinedProfile::MinSize => min_size_template(),
         }
     }
 }
