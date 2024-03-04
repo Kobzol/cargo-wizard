@@ -2,7 +2,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
-use rexpect::session::{spawn_command, PtySession};
+use rexpect::session::{PtySession, spawn_command};
 use tempfile::TempDir;
 
 pub struct CargoProject {
@@ -34,7 +34,7 @@ impl CargoProject {
     pub fn read<P: AsRef<Path>>(&mut self, path: P) -> String {
         let path = path.as_ref();
         std::fs::read_to_string(self.path(path))
-            .expect(&format!("Cannot read path {}", path.display()))
+            .unwrap_or_else(|e| panic!("Cannot read path {}: {e:?}", path.display()))
     }
 
     pub fn manifest(&mut self, code: &str) -> &mut Self {
@@ -77,7 +77,7 @@ pub struct Cmd {
 
 impl Cmd {
     pub fn start_terminal(self) -> anyhow::Result<Terminal> {
-        let mut session = spawn_command(self.create_std_cmd(false), Some(1000))?;
+        let session = spawn_command(self.create_std_cmd(false), Some(1000))?;
         Ok(Terminal { session })
     }
 
@@ -100,7 +100,7 @@ impl Cmd {
             command.arg(arg);
         }
         if let Some(cwd) = &self.cwd {
-            command.current_dir(&cwd);
+            command.current_dir(cwd);
         }
         command.stdin(Stdio::piped());
         if capture_output {
@@ -202,7 +202,7 @@ pub fn init_cargo_project() -> anyhow::Result<CargoProject> {
 
     let name = "foo";
     let status = Command::new("cargo")
-        .args(&["new", "--bin", name])
+        .args(["new", "--bin", name])
         .current_dir(dir.path())
         .status()?;
     assert!(status.success());

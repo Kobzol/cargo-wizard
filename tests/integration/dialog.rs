@@ -1,7 +1,3 @@
-use std::process::Command;
-
-use rexpect::session::spawn_command;
-
 use crate::utils::init_cargo_project;
 
 #[test]

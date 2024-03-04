@@ -1,27 +1,21 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
-use toml_edit::{table, value, Document, Item};
+use toml_edit::{Document, table, value};
 
 use crate::toml::{TemplateEntry, TomlTableTemplate};
-
-#[derive(Debug)]
-pub struct ParsedProfile {
-    name: String,
-    items: HashMap<String, Item>,
-}
 
 /// Manifest parsed out of a Cargo.toml file.
 #[derive(Debug)]
 pub struct ParsedManifest {
     document: Document,
     /// Original profiles present in the manifest, e.g. `[profile.dev]`.
-    profiles: HashMap<String, ParsedProfile>,
+    profiles: HashSet<String>,
 }
 
 impl ParsedManifest {
-    pub fn get_original_profiles(&self) -> &HashMap<String, ParsedProfile> {
+    pub fn get_original_profiles(&self) -> &HashSet<String> {
         &self.profiles
     }
 
@@ -88,25 +82,7 @@ pub fn parse_manifest(path: &Path) -> anyhow::Result<ParsedManifest> {
         .context("Cannot parse Cargo.toml manifest")?;
 
     let profiles = if let Some(profiles) = manifest.get("profile").and_then(|p| p.as_table_like()) {
-        profiles
-            .iter()
-            .filter_map(|(name, table)| table.as_table().map(|t| (name, t)))
-            .map(|(name, table)| {
-                let name = name.to_string();
-
-                let items = table
-                    .iter()
-                    .map(|(name, item)| (name.to_string(), item.clone()))
-                    .collect();
-
-                let profile = ParsedProfile {
-                    name: name.clone(),
-                    items,
-                };
-
-                (name, profile)
-            })
-            .collect()
+        profiles.iter().map(|(name, _)| name.to_string()).collect()
     } else {
         Default::default()
     };

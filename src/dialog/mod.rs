@@ -67,7 +67,7 @@ fn dialog_profile(manifest: &ParsedManifest) -> anyhow::Result<String> {
     let mut profiles = vec![Profile::Dev, Profile::Release];
     let mut original_profiles: Vec<_> = manifest
         .get_original_profiles()
-        .keys()
+        .iter()
         .filter(|p| !matches!(p.as_str(), "dev" | "release"))
         .cloned()
         .collect();
