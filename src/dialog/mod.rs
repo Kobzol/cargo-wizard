@@ -192,9 +192,9 @@ fn dialog_template() -> anyhow::Result<PredefinedTemplate> {
     impl Display for Template {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             let msg = match self.0 {
-                PredefinedTemplate::FastCompile => "♻️ FastCompile: minimize compile times",
-                PredefinedTemplate::FastRuntime => "🏁 FastRuntime: maximize runtime performance",
-                PredefinedTemplate::MinSize => "🗜️MinSize: minimize binary size",
+                PredefinedTemplate::FastCompile => "FastCompile: minimize compile times",
+                PredefinedTemplate::FastRuntime => "FastRuntime: maximize runtime performance",
+                PredefinedTemplate::MinSize => "MinSize: minimize binary size",
             };
             f.write_str(msg)
         }
