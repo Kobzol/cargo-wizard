@@ -3,21 +3,23 @@ use std::fmt::{Display, Formatter};
 use anyhow::Context;
 use clap::ValueEnum;
 use console::{style, Style};
-use inquire::{Confirm, min_length, Select, Text};
 use inquire::ui::{Color, RenderConfig};
+use inquire::{min_length, Confirm, Select, Text};
 use similar::ChangeTag;
 
-use cargo_wizard::{CargoConfig, CargoManifest, parse_workspace, resolve_manifest_path};
 use cargo_wizard::PredefinedTemplateKind;
+use cargo_wizard::{parse_workspace, resolve_manifest_path, CargoConfig, CargoManifest};
 pub use error::{DialogError, DialogResult};
+
+use crate::cli::CliConfig;
 
 mod error;
 
-pub fn dialog_root() -> DialogResult<()> {
-    let template_kind = dialog_template()?;
+pub fn dialog_root(cli_config: CliConfig) -> DialogResult<()> {
+    let template_kind = dialog_template(&cli_config)?;
     let manifest_path = resolve_manifest_path().context("Cannot resolve Cargo.toml path")?;
     let workspace = parse_workspace(&manifest_path)?;
-    let profile = dialog_profile(&workspace.manifest)?;
+    let profile = dialog_profile(&cli_config, &workspace.manifest)?;
 
     if let Some(manifest) = dialog_apply_diff(workspace.manifest, &profile, template_kind.clone())?
     {
@@ -149,7 +151,7 @@ fn calculate_diff(original: &str, new: &str) -> String {
     output
 }
 
-fn dialog_profile(manifest: &CargoManifest) -> DialogResult<String> {
+fn dialog_profile(cli_config: &CliConfig, manifest: &CargoManifest) -> DialogResult<String> {
     enum Profile {
         Dev,
         Release,
@@ -181,27 +183,27 @@ fn dialog_profile(manifest: &CargoManifest) -> DialogResult<String> {
         "Select the profile that you want to update/create:",
         profiles,
     )
-    .with_render_config(profile_render_config())
+    .with_render_config(profile_render_config(cli_config))
     .prompt()?;
 
     let profile = match selected {
         Profile::Dev => "dev".to_string(),
         Profile::Release => "release".to_string(),
         Profile::Custom(name) => name,
-        Profile::CreateNew => dialog_profile_name()?,
+        Profile::CreateNew => dialog_profile_name(cli_config)?,
     };
 
     Ok(profile)
 }
 
-fn dialog_profile_name() -> DialogResult<String> {
+fn dialog_profile_name(cli_config: &CliConfig) -> DialogResult<String> {
     Ok(Text::new("Select profile name:")
         .with_validator(min_length!(1))
-        .with_render_config(profile_render_config())
+        .with_render_config(profile_render_config(cli_config))
         .prompt()?)
 }
 
-fn dialog_template() -> DialogResult<PredefinedTemplateKind> {
+fn dialog_template(cli_config: &CliConfig) -> DialogResult<PredefinedTemplateKind> {
     struct Template(PredefinedTemplateKind);
 
     impl Display for Template {
@@ -222,14 +224,14 @@ fn dialog_template() -> DialogResult<PredefinedTemplateKind> {
             .map(|template| Template(template.clone()))
             .collect(),
     )
-    .with_render_config(template_render_config())
+    .with_render_config(template_render_config(cli_config))
     .prompt()?;
 
     Ok(selected.0)
 }
 
-fn template_render_config() -> RenderConfig<'static> {
-    let mut render_config = RenderConfig::default_colored();
+fn template_render_config(cli_config: &CliConfig) -> RenderConfig<'static> {
+    let mut render_config = create_render_config(cli_config);
     render_config.answer = render_config.option.with_fg(Color::DarkCyan);
     render_config.selected_option = render_config
         .selected_option
@@ -237,13 +239,21 @@ fn template_render_config() -> RenderConfig<'static> {
     render_config
 }
 
-fn profile_render_config() -> RenderConfig<'static> {
-    let mut render_config = RenderConfig::default_colored();
+fn profile_render_config(cli_config: &CliConfig) -> RenderConfig<'static> {
+    let mut render_config = create_render_config(cli_config);
     render_config.answer = render_config.option.with_fg(Color::DarkGreen);
     render_config.selected_option = render_config
         .selected_option
         .map(|s| s.with_fg(Color::DarkGreen));
     render_config
+}
+
+fn create_render_config(cli_config: &CliConfig) -> RenderConfig<'static> {
+    if cli_config.colors_enabled() {
+        RenderConfig::default_colored()
+    } else {
+        RenderConfig::empty()
+    }
 }
 
 fn template_style() -> Style {

@@ -10,7 +10,7 @@ fn dialog_fast_compile_dev() -> anyhow::Result<()> {
     terminal.expect("Select the profile that you want to update/create")?;
     terminal.key_enter()?;
     terminal.line("y")?;
-    terminal.expect("applied to profile")?;
+    terminal.expect("Template FastCompile applied to profile dev")?;
     terminal.wait()?;
 
     insta::assert_snapshot!(project.read_manifest(), @r###"
@@ -38,7 +38,7 @@ fn dialog_fast_compile_release() -> anyhow::Result<()> {
     terminal.key_down()?;
     terminal.key_enter()?;
     terminal.line("y")?;
-    terminal.expect("applied to profile")?;
+    terminal.expect("Template FastCompile applied to profile release")?;
     terminal.wait()?;
 
     insta::assert_snapshot!(project.read_manifest(), @r###"
@@ -95,7 +95,7 @@ fn dialog_fast_compile_custom_profile() -> anyhow::Result<()> {
     // Enter profile name
     terminal.line("custom")?;
     terminal.line("y")?;
-    terminal.expect("applied to profile")?;
+    terminal.expect("Template FastCompile applied to profile custom")?;
     terminal.wait()?;
 
     insta::assert_snapshot!(project.read_manifest(), @r###"

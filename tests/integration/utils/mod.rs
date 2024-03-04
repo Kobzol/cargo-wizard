@@ -15,7 +15,7 @@ impl CargoProject {
     pub fn cmd(&self, args: &[&str]) -> Cmd {
         Cmd::default()
             .cwd(&self.dir)
-            .args(&["cargo", "wizard"])
+            .args(&["cargo", "wizard", "--colors", "never"])
             .args(args)
     }
 

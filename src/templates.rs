@@ -1,7 +1,7 @@
 use crate::toml::{TableItem, TomlTableTemplate};
-use crate::TomlProfileTemplate;
 use crate::workspace::config::ConfigTemplate;
 use crate::workspace::manifest::BuiltinProfile;
+use crate::TomlProfileTemplate;
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 pub enum PredefinedTemplateKind {
