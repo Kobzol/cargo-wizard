@@ -2,6 +2,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
+use rexpect::session::{spawn_command, PtySession};
 use tempfile::TempDir;
 
 pub struct CargoProject {
@@ -75,22 +76,13 @@ pub struct Cmd {
 }
 
 impl Cmd {
+    pub fn start_terminal(self) -> anyhow::Result<Terminal> {
+        let mut session = spawn_command(self.create_std_cmd(false), Some(1000))?;
+        Ok(Terminal { session })
+    }
+
     pub fn run(self) -> anyhow::Result<Output> {
-        let mut command = Command::new(&self.arguments[0]);
-        for arg in &self.arguments[1..] {
-            command.arg(arg);
-        }
-        if let Some(cwd) = self.cwd {
-            command.current_dir(&cwd);
-        }
-        command.stdin(Stdio::piped());
-        command.stdout(Stdio::piped());
-        command.stderr(Stdio::piped());
-
-        let path = std::env::var("PATH").unwrap_or_default();
-        let path = format!("{}:{}", debug_target_dir().display(), path);
-
-        command.env("PATH", path);
+        let mut command = self.create_std_cmd(true);
 
         let mut child = command.spawn()?;
         {
@@ -100,6 +92,27 @@ impl Cmd {
 
         let output = child.wait_with_output()?;
         Ok(output)
+    }
+
+    fn create_std_cmd(&self, capture_output: bool) -> Command {
+        let mut command = Command::new(&self.arguments[0]);
+        for arg in &self.arguments[1..] {
+            command.arg(arg);
+        }
+        if let Some(cwd) = &self.cwd {
+            command.current_dir(&cwd);
+        }
+        command.stdin(Stdio::piped());
+        if capture_output {
+            command.stdout(Stdio::piped());
+            command.stderr(Stdio::piped());
+        }
+
+        let path = std::env::var("PATH").unwrap_or_default();
+        let path = format!("{}:{}", debug_target_dir().display(), path);
+
+        command.env("PATH", path);
+        command
     }
 
     pub fn args(mut self, args: &[&str]) -> Self {
@@ -112,6 +125,39 @@ impl Cmd {
             cwd: Some(cwd.to_path_buf()),
             ..self
         }
+    }
+}
+
+pub struct Terminal {
+    session: PtySession,
+}
+
+impl Terminal {
+    pub fn expect(&mut self, text: &str) -> anyhow::Result<()> {
+        self.session.exp_string(text)?;
+        Ok(())
+    }
+
+    pub fn line(&mut self, text: &str) -> anyhow::Result<()> {
+        self.session.send_line(text)?;
+        Ok(())
+    }
+
+    pub fn key_enter(&mut self) -> anyhow::Result<()> {
+        self.session.send_line("")?;
+        Ok(())
+    }
+
+    pub fn key_down(&mut self) -> anyhow::Result<()> {
+        // Arrow down, detected through `showkey -a`
+        self.session.send("\x1b\x5b\x42")?;
+        self.session.flush()?;
+        Ok(())
+    }
+
+    pub fn wait(self) -> anyhow::Result<()> {
+        self.session.process.wait()?;
+        Ok(())
     }
 }
 
