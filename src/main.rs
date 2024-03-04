@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Parser;
 
-use cargo_wizard::PredefinedTemplateKind;
 use cargo_wizard::{parse_workspace, resolve_manifest_path};
+use cargo_wizard::PredefinedTemplateKind;
 
 use crate::cli::CliConfig;
 use crate::dialog::{dialog_root, DialogError};
@@ -110,11 +110,16 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn setup_cli(policy: ColorPolicy) -> CliConfig {
-    let use_colors = match policy {
+    let mut use_colors = match policy {
         ColorPolicy::Always => true,
         ColorPolicy::Auto => atty::is(atty::Stream::Stdout),
         ColorPolicy::Never => false,
     };
+
+    if std::env::var("NO_COLOR") == Ok("1".to_string()) {
+        use_colors = false;
+    }
+
     console::set_colors_enabled(use_colors);
     console::set_colors_enabled_stderr(use_colors);
     CliConfig::new(use_colors)
