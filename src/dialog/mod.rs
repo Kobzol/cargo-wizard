@@ -86,7 +86,7 @@ fn dialog_apply_diff(
         .unwrap_or_default();
 
     let diff = calculate_diff(&orig_profile_text, &new_profile_text);
-    println!("{diff}");
+    println!("\r{diff}");
 
     let answer = Confirm::new(&format!(
         "Do you want to apply the above diff to the {} profile?",
