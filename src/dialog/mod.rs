@@ -1,13 +1,14 @@
 use std::fmt::{Display, Formatter};
+use std::io::Write;
 
 use anyhow::Context;
 use clap::ValueEnum;
 use console::{style, Style};
-use inquire::{Confirm, min_length, Select, Text};
 use inquire::ui::{Color, RenderConfig};
+use inquire::{min_length, Confirm, Select, Text};
 use similar::ChangeTag;
 
-use cargo_wizard::{parse_manifest, ParsedManifest, resolve_manifest_path};
+use cargo_wizard::{parse_manifest, resolve_manifest_path, ParsedManifest};
 
 use crate::cli::PredefinedTemplate;
 
@@ -17,6 +18,10 @@ fn template_style() -> Style {
 
 fn profile_style() -> Style {
     Style::new().green()
+}
+
+fn command_style() -> Style {
+    Style::new().yellow()
 }
 
 pub fn dialog_root() -> anyhow::Result<()> {
@@ -29,19 +34,31 @@ pub fn dialog_root() -> anyhow::Result<()> {
         manifest.write(&manifest_path)?;
 
         println!(
-            "Template {} applied to profile {}.",
+            "✅ Template {} applied to profile {}.",
             template_style().apply_to(match template {
                 PredefinedTemplate::FastCompile => "FastCompile",
                 PredefinedTemplate::FastRuntime => "FastRuntime",
                 PredefinedTemplate::MinSize => "MinSize",
             }),
-            profile_style().apply_to(profile)
+            profile_style().apply_to(&profile)
         );
+
+        let profile_flag = match profile.as_str() {
+            "dev" => None,
+            "release" => Some("--release".to_string()),
+            profile => Some(format!("--profile={profile}")),
+        };
+        if let Some(flag) = profile_flag {
+            println!(
+                "❗ Do not forget to run `{}` to use the selected profile.",
+                command_style().apply_to(format!("cargo <cmd> {flag}"))
+            );
+        }
 
         if let PredefinedTemplate::FastRuntime = template {
             println!(
-                "Consider also using the {} subcommand to further optimize your binary.",
-                Style::new().yellow().apply_to("cargo-pgo")
+                "\nTip: Consider using the {} subcommand to further optimize your binary.",
+                command_style().apply_to("cargo-pgo")
             );
         }
     }
