@@ -120,6 +120,7 @@ dependencies = [
  "rexpect",
  "similar",
  "tempfile",
+ "thiserror",
  "toml_edit",
 ]
 

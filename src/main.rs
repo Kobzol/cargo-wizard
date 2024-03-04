@@ -6,7 +6,7 @@ use clap::Parser;
 use cargo_wizard::{parse_manifest, resolve_manifest_path};
 
 use crate::cli::PredefinedTemplate;
-use crate::dialog::dialog_root;
+use crate::dialog::{dialog_root, DialogError};
 
 mod cli;
 mod dialog;
@@ -64,7 +64,18 @@ fn main() -> anyhow::Result<()> {
                 manifest.write(&manifest_path)?;
             }
             None => {
-                dialog_root().context("Interactive dialog failed")?;
+                if let Err(error) = dialog_root() {
+                    match error {
+                        DialogError::Interrupted => {
+                            // Print an empty line when the app is interrupted, to avoid
+                            // overwriting the last line.
+                            println!();
+                        }
+                        DialogError::Generic(error) => {
+                            panic!("{error:?}");
+                        }
+                    }
+                }
             }
         },
     }

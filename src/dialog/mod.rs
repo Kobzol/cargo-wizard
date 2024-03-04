@@ -1,16 +1,18 @@
 use std::fmt::{Display, Formatter};
-use std::io::Write;
 
 use anyhow::Context;
 use clap::ValueEnum;
 use console::{style, Style};
+use inquire::{Confirm, min_length, Select, Text};
 use inquire::ui::{Color, RenderConfig};
-use inquire::{min_length, Confirm, Select, Text};
 use similar::ChangeTag;
 
-use cargo_wizard::{parse_manifest, resolve_manifest_path, ParsedManifest};
+use cargo_wizard::{parse_manifest, ParsedManifest, resolve_manifest_path};
+pub use error::{DialogError, DialogResult};
 
 use crate::cli::PredefinedTemplate;
+
+mod error;
 
 fn template_style() -> Style {
     Style::new().cyan()
@@ -24,7 +26,7 @@ fn command_style() -> Style {
     Style::new().yellow()
 }
 
-pub fn dialog_root() -> anyhow::Result<()> {
+pub fn dialog_root() -> DialogResult<()> {
     let template = dialog_template()?;
     let manifest_path = resolve_manifest_path().context("Cannot resolve Cargo.toml path")?;
     let manifest = parse_manifest(&manifest_path)?;
@@ -70,7 +72,7 @@ fn dialog_apply_diff(
     manifest: ParsedManifest,
     profile: &str,
     template: PredefinedTemplate,
-) -> anyhow::Result<Option<ParsedManifest>> {
+) -> DialogResult<Option<ParsedManifest>> {
     let orig_manifest = manifest.clone();
     let orig_profile_text = orig_manifest
         .get_profile(profile)
@@ -91,8 +93,7 @@ fn dialog_apply_diff(
         profile_style().apply_to(profile)
     ))
     .with_default(true)
-    .prompt()
-    .context("Cannot confirm diff")?;
+    .prompt()?;
 
     Ok(answer.then_some(manifest))
 }
@@ -149,7 +150,7 @@ fn calculate_diff(original: &str, new: &str) -> String {
     output
 }
 
-fn dialog_profile(manifest: &ParsedManifest) -> anyhow::Result<String> {
+fn dialog_profile(manifest: &ParsedManifest) -> DialogResult<String> {
     enum Profile {
         Dev,
         Release,
@@ -183,8 +184,7 @@ fn dialog_profile(manifest: &ParsedManifest) -> anyhow::Result<String> {
         profiles,
     )
     .with_render_config(profile_render_config())
-    .prompt()
-    .context("Cannot select template")?;
+    .prompt()?;
 
     let profile = match selected {
         Profile::Dev => "dev".to_string(),
@@ -196,14 +196,14 @@ fn dialog_profile(manifest: &ParsedManifest) -> anyhow::Result<String> {
     Ok(profile)
 }
 
-fn dialog_profile_name() -> anyhow::Result<String> {
+fn dialog_profile_name() -> DialogResult<String> {
     Ok(Text::new("Select profile name:")
         .with_validator(min_length!(1))
         .with_render_config(profile_render_config())
         .prompt()?)
 }
 
-fn dialog_template() -> anyhow::Result<PredefinedTemplate> {
+fn dialog_template() -> DialogResult<PredefinedTemplate> {
     struct Template(PredefinedTemplate);
 
     impl Display for Template {
@@ -225,8 +225,7 @@ fn dialog_template() -> anyhow::Result<PredefinedTemplate> {
             .collect(),
     )
     .with_render_config(template_render_config())
-    .prompt()
-    .context("Cannot select template")?;
+    .prompt()?;
 
     Ok(selected.0)
 }
