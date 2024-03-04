@@ -60,7 +60,7 @@ fn main() -> anyhow::Result<()> {
                 };
                 let manifest = parse_manifest(&manifest_path)?;
                 let template = args.template.resolve_to_template();
-                let manifest = manifest.apply_profile(&args.profile, template)?;
+                let manifest = manifest.apply_template(&args.profile, template)?;
                 manifest.write(&manifest_path)?;
             }
             None => {

@@ -2,12 +2,12 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
-use toml_edit::{Document, table, value};
+use toml_edit::{Document, table, Table, value};
 
 use crate::toml::{TemplateEntry, TomlTableTemplate};
 
 /// Manifest parsed out of a Cargo.toml file.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ParsedManifest {
     document: Document,
     /// Original profiles present in the manifest, e.g. `[profile.dev]`.
@@ -19,7 +19,12 @@ impl ParsedManifest {
         &self.profiles
     }
 
-    pub fn apply_profile(
+    pub fn get_profile(&self, name: &str) -> Option<&Table> {
+        let profiles_table = self.document.get("profile").and_then(|p| p.as_table())?;
+        profiles_table.get(name).and_then(|p| p.as_table())
+    }
+
+    pub fn apply_template(
         mut self,
         name: &str,
         template: TomlProfileTemplate,

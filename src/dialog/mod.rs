@@ -2,9 +2,10 @@ use std::fmt::{Display, Formatter};
 
 use anyhow::Context;
 use clap::ValueEnum;
-use console::Style;
-use inquire::{min_length, Select, Text};
+use console::{style, Style};
+use inquire::{Confirm, min_length, Select, Text};
 use inquire::ui::{Color, RenderConfig};
+use similar::ChangeTag;
 
 use cargo_wizard::{parse_manifest, ParsedManifest, resolve_manifest_path};
 
@@ -23,27 +24,112 @@ pub fn dialog_root() -> anyhow::Result<()> {
     let manifest_path = resolve_manifest_path().context("Cannot resolve Cargo.toml path")?;
     let manifest = parse_manifest(&manifest_path)?;
     let profile = dialog_profile(&manifest)?;
-    let manifest = manifest.apply_profile(&profile, template.resolve_to_template())?;
-    manifest.write(&manifest_path)?;
 
-    println!(
-        "Template {} applied to profile {}.",
-        template_style().apply_to(match template {
-            PredefinedTemplate::FastCompile => "FastCompile",
-            PredefinedTemplate::FastRuntime => "FastRuntime",
-            PredefinedTemplate::MinSize => "MinSize",
-        }),
-        profile_style().apply_to(profile)
-    );
+    if let Some(manifest) = dialog_apply_diff(manifest, &profile, template.clone())? {
+        manifest.write(&manifest_path)?;
 
-    if let PredefinedTemplate::FastRuntime = template {
         println!(
-            "Consider also using the {} subcommand to further optimize your binary.",
-            Style::new().yellow().apply_to("cargo-pgo")
+            "Template {} applied to profile {}.",
+            template_style().apply_to(match template {
+                PredefinedTemplate::FastCompile => "FastCompile",
+                PredefinedTemplate::FastRuntime => "FastRuntime",
+                PredefinedTemplate::MinSize => "MinSize",
+            }),
+            profile_style().apply_to(profile)
         );
+
+        if let PredefinedTemplate::FastRuntime = template {
+            println!(
+                "Consider also using the {} subcommand to further optimize your binary.",
+                Style::new().yellow().apply_to("cargo-pgo")
+            );
+        }
     }
 
     Ok(())
+}
+
+fn dialog_apply_diff(
+    manifest: ParsedManifest,
+    profile: &str,
+    template: PredefinedTemplate,
+) -> anyhow::Result<Option<ParsedManifest>> {
+    let orig_manifest = manifest.clone();
+    let orig_profile_text = orig_manifest
+        .get_profile(profile)
+        .map(|t| t.to_string())
+        .unwrap_or_default();
+
+    let manifest = manifest.apply_template(profile, template.resolve_to_template())?;
+    let new_profile_text = manifest
+        .get_profile(profile)
+        .map(|t| t.to_string())
+        .unwrap_or_default();
+
+    let diff = calculate_diff(&orig_profile_text, &new_profile_text);
+    println!("{diff}");
+
+    let answer = Confirm::new(&format!(
+        "Do you want to apply the above diff to the {} profile?",
+        profile_style().apply_to(profile)
+    ))
+    .with_default(true)
+    .prompt()
+    .context("Cannot confirm diff")?;
+
+    Ok(answer.then_some(manifest))
+}
+
+// Taken from https://github.com/mitsuhiko/similar/blob/main/examples/terminal-inline.rs
+fn calculate_diff(original: &str, new: &str) -> String {
+    use std::fmt::Write;
+
+    struct Line(Option<usize>);
+
+    impl Display for Line {
+        fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+            match self.0 {
+                None => write!(f, "    "),
+                Some(idx) => write!(f, "{:<4}", idx + 1),
+            }
+        }
+    }
+
+    let diff = similar::TextDiff::from_lines(original, new);
+    let mut output = String::new();
+    for (idx, group) in diff.grouped_ops(3).iter().enumerate() {
+        if idx > 0 {
+            write!(output, "{:-^1$}", "-", 80).unwrap();
+        }
+        for op in group {
+            for change in diff.iter_inline_changes(op) {
+                let (sign, s) = match change.tag() {
+                    ChangeTag::Delete => ("-", Style::new().red()),
+                    ChangeTag::Insert => ("+", Style::new().green()),
+                    ChangeTag::Equal => (" ", Style::new().dim()),
+                };
+                write!(
+                    output,
+                    "{}{} |{}",
+                    style(Line(change.old_index())).dim(),
+                    style(Line(change.new_index())).dim(),
+                    s.apply_to(sign).bold(),
+                )
+                .unwrap();
+                for (emphasized, value) in change.iter_strings_lossy() {
+                    if emphasized {
+                        write!(output, "{}", s.apply_to(value).underlined().on_black()).unwrap();
+                    } else {
+                        write!(output, "{}", s.apply_to(value)).unwrap();
+                    }
+                }
+                if change.missing_newline() {
+                    writeln!(output).unwrap();
+                }
+            }
+        }
+    }
+    output
 }
 
 fn dialog_profile(manifest: &ParsedManifest) -> anyhow::Result<String> {

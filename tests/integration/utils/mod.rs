@@ -2,7 +2,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
-use rexpect::session::{PtySession, spawn_command};
+use rexpect::session::{spawn_command, PtySession};
 use tempfile::TempDir;
 
 pub struct CargoProject {
