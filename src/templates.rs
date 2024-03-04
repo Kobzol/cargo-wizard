@@ -1,5 +1,6 @@
-use crate::manifest::{BuiltinProfile, TomlProfileTemplate};
 use crate::toml::{TemplateEntry, TomlTableTemplate};
+use crate::workspace::manifest::BuiltinProfile;
+use crate::TomlProfileTemplate;
 
 /// Template that focuses on quick compile time.
 pub fn fast_compile_template() -> TomlProfileTemplate {

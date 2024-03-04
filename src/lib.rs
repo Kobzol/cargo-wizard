@@ -7,11 +7,12 @@
 //!
 //! You can also use this crate as a library, although it probably won't be very useful.
 
-pub use manifest::ParsedManifest;
-pub use manifest::TomlProfileTemplate;
-pub use manifest::{parse_manifest, resolve_manifest_path};
 pub use templates::*;
+pub use workspace::{CargoWorkspace, parse_workspace};
+pub use workspace::manifest::CargoManifest;
+pub use workspace::manifest::resolve_manifest_path;
+pub use workspace::manifest::TomlProfileTemplate;
 
-mod manifest;
 mod templates;
 mod toml;
+mod workspace;

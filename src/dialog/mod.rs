@@ -7,7 +7,7 @@ use inquire::{Confirm, min_length, Select, Text};
 use inquire::ui::{Color, RenderConfig};
 use similar::ChangeTag;
 
-use cargo_wizard::{parse_manifest, ParsedManifest, resolve_manifest_path};
+use cargo_wizard::{CargoManifest, parse_workspace, resolve_manifest_path};
 pub use error::{DialogError, DialogResult};
 
 use crate::cli::PredefinedTemplate;
@@ -29,11 +29,11 @@ fn command_style() -> Style {
 pub fn dialog_root() -> DialogResult<()> {
     let template = dialog_template()?;
     let manifest_path = resolve_manifest_path().context("Cannot resolve Cargo.toml path")?;
-    let manifest = parse_manifest(&manifest_path)?;
-    let profile = dialog_profile(&manifest)?;
+    let workspace = parse_workspace(&manifest_path)?;
+    let profile = dialog_profile(&workspace.manifest)?;
 
-    if let Some(manifest) = dialog_apply_diff(manifest, &profile, template.clone())? {
-        manifest.write(&manifest_path)?;
+    if let Some(manifest) = dialog_apply_diff(workspace.manifest, &profile, template.clone())? {
+        manifest.write()?;
 
         println!(
             "✅ Template {} applied to profile {}.",
@@ -69,10 +69,10 @@ pub fn dialog_root() -> DialogResult<()> {
 }
 
 fn dialog_apply_diff(
-    manifest: ParsedManifest,
+    manifest: CargoManifest,
     profile: &str,
     template: PredefinedTemplate,
-) -> DialogResult<Option<ParsedManifest>> {
+) -> DialogResult<Option<CargoManifest>> {
     let orig_manifest = manifest.clone();
     let orig_profile_text = orig_manifest
         .get_profile(profile)
@@ -150,7 +150,7 @@ fn calculate_diff(original: &str, new: &str) -> String {
     output
 }
 
-fn dialog_profile(manifest: &ParsedManifest) -> DialogResult<String> {
+fn dialog_profile(manifest: &CargoManifest) -> DialogResult<String> {
     enum Profile {
         Dev,
         Release,
@@ -170,10 +170,9 @@ fn dialog_profile(manifest: &ParsedManifest) -> DialogResult<String> {
 
     let mut profiles = vec![Profile::Dev, Profile::Release];
     let mut original_profiles: Vec<_> = manifest
-        .get_original_profiles()
-        .iter()
+        .get_profiles()
+        .into_iter()
         .filter(|p| !matches!(p.as_str(), "dev" | "release"))
-        .cloned()
         .collect();
     original_profiles.sort();
     profiles.extend(original_profiles.into_iter().map(Profile::Custom));

@@ -9,6 +9,7 @@ fn dialog_fast_compile_dev() -> anyhow::Result<()> {
     terminal.key_enter()?;
     terminal.expect("Select the profile that you want to update/create")?;
     terminal.key_enter()?;
+    terminal.line("y")?;
     terminal.expect("applied to profile")?;
     terminal.wait()?;
 
@@ -36,6 +37,7 @@ fn dialog_fast_compile_release() -> anyhow::Result<()> {
     terminal.expect("Select the profile that you want to update/create")?;
     terminal.key_down()?;
     terminal.key_enter()?;
+    terminal.line("y")?;
     terminal.expect("applied to profile")?;
     terminal.wait()?;
 
@@ -92,6 +94,7 @@ fn dialog_fast_compile_custom_profile() -> anyhow::Result<()> {
     terminal.key_enter()?;
     // Enter profile name
     terminal.line("custom")?;
+    terminal.line("y")?;
     terminal.expect("applied to profile")?;
     terminal.wait()?;
 

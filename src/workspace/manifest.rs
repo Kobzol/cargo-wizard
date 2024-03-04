@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
@@ -6,17 +5,54 @@ use toml_edit::{Document, table, Table, value};
 
 use crate::toml::{TemplateEntry, TomlTableTemplate};
 
-/// Manifest parsed out of a Cargo.toml file.
-#[derive(Clone, Debug)]
-pub struct ParsedManifest {
-    document: Document,
-    /// Original profiles present in the manifest, e.g. `[profile.dev]`.
-    profiles: HashSet<String>,
+/// Tries to resolve the workspace root manifest (Cargo.toml) path from the current directory.
+pub fn resolve_manifest_path() -> anyhow::Result<PathBuf> {
+    let cmd = cargo_metadata::MetadataCommand::new();
+    let metadata = cmd
+        .exec()
+        .map_err(|error| anyhow::anyhow!("Cannot get cargo metadata: {:?}", error))?;
+    let manifest_path = metadata
+        .workspace_root
+        .into_std_path_buf()
+        .join("Cargo.toml");
+    Ok(manifest_path)
 }
 
-impl ParsedManifest {
-    pub fn get_original_profiles(&self) -> &HashSet<String> {
-        &self.profiles
+pub enum BuiltinProfile {
+    Dev,
+    Release,
+}
+
+pub struct TomlProfileTemplate {
+    pub inherits: BuiltinProfile,
+    pub template: TomlTableTemplate,
+}
+
+/// Manifest parsed out of a Cargo.toml file.
+#[derive(Clone)]
+pub struct CargoManifest {
+    path: PathBuf,
+    document: Document,
+}
+
+impl CargoManifest {
+    pub fn from_path(path: &Path) -> anyhow::Result<Self> {
+        let manifest = std::fs::read_to_string(path).context("Cannot read Cargo.toml manifest")?;
+        let document = manifest
+            .parse::<Document>()
+            .context("Cannot parse Cargo.toml manifest")?;
+        Ok(Self {
+            document,
+            path: path.to_path_buf(),
+        })
+    }
+
+    pub fn get_profiles(&self) -> Vec<String> {
+        self.document
+            .get("profile")
+            .and_then(|p| p.as_table_like())
+            .map(|t| t.iter().map(|(name, _)| name.to_string()).collect())
+            .unwrap_or_default()
     }
 
     pub fn get_profile(&self, name: &str) -> Option<&Table> {
@@ -73,53 +109,13 @@ impl ParsedManifest {
         Ok(self)
     }
 
-    pub fn write(self, path: &Path) -> anyhow::Result<()> {
-        std::fs::write(path, self.document.to_string())?;
+    pub fn write(self) -> anyhow::Result<()> {
+        std::fs::write(self.path, self.document.to_string())
+            .context("Cannot write Cargo.toml manifest")?;
         Ok(())
     }
 }
 
-/// Parses a Cargo.toml manifest from disk.
-pub fn parse_manifest(path: &Path) -> anyhow::Result<ParsedManifest> {
-    let manifest = std::fs::read_to_string(path).context("Cannot read Cargo.toml manifest")?;
-    let manifest = manifest
-        .parse::<Document>()
-        .context("Cannot parse Cargo.toml manifest")?;
-
-    let profiles = if let Some(profiles) = manifest.get("profile").and_then(|p| p.as_table_like()) {
-        profiles.iter().map(|(name, _)| name.to_string()).collect()
-    } else {
-        Default::default()
-    };
-    Ok(ParsedManifest {
-        profiles,
-        document: manifest,
-    })
-}
-
-pub fn is_builtin_profile(name: &str) -> bool {
+fn is_builtin_profile(name: &str) -> bool {
     matches!(name, "dev" | "release")
-}
-
-/// Tries to resolve the workspace root manifest (Cargo.toml) path from the current directory.
-pub fn resolve_manifest_path() -> anyhow::Result<PathBuf> {
-    let cmd = cargo_metadata::MetadataCommand::new();
-    let metadata = cmd
-        .exec()
-        .map_err(|error| anyhow::anyhow!("Cannot get cargo metadata: {:?}", error))?;
-    let manifest_path = metadata
-        .workspace_root
-        .into_std_path_buf()
-        .join("Cargo.toml");
-    Ok(manifest_path)
-}
-
-pub enum BuiltinProfile {
-    Dev,
-    Release,
-}
-
-pub struct TomlProfileTemplate {
-    pub inherits: BuiltinProfile,
-    pub template: TomlTableTemplate,
 }

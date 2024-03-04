@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Parser;
 
-use cargo_wizard::{parse_manifest, resolve_manifest_path};
+use cargo_wizard::{parse_workspace, resolve_manifest_path};
 
 use crate::cli::PredefinedTemplate;
 use crate::dialog::{dialog_root, DialogError};
@@ -58,10 +58,10 @@ fn main() -> anyhow::Result<()> {
                     Some(path) => path,
                     None => resolve_manifest_path().context("Cannot resolve Cargo.toml path")?,
                 };
-                let manifest = parse_manifest(&manifest_path)?;
+                let workspace = parse_workspace(&manifest_path)?;
                 let template = args.template.resolve_to_template();
-                let manifest = manifest.apply_template(&args.profile, template)?;
-                manifest.write(&manifest_path)?;
+                let manifest = workspace.manifest.apply_template(&args.profile, template)?;
+                manifest.write()?;
             }
             None => {
                 if let Err(error) = dialog_root() {
