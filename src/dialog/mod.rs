@@ -3,14 +3,13 @@ use std::fmt::{Display, Formatter};
 use anyhow::Context;
 use clap::ValueEnum;
 use console::{style, Style};
+use inquire::{Confirm, min_length, Select, Text};
 use inquire::ui::{Color, RenderConfig};
-use inquire::{min_length, Confirm, Select, Text};
 use similar::ChangeTag;
 
-use cargo_wizard::{parse_workspace, resolve_manifest_path, CargoConfig, CargoManifest};
+use cargo_wizard::{CargoConfig, CargoManifest, parse_workspace, resolve_manifest_path};
+use cargo_wizard::PredefinedTemplateKind;
 pub use error::{DialogError, DialogResult};
-
-use crate::cli::PredefinedTemplateKind;
 
 mod error;
 

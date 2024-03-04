@@ -4,11 +4,10 @@ use anyhow::Context;
 use clap::Parser;
 
 use cargo_wizard::{parse_workspace, resolve_manifest_path};
+use cargo_wizard::PredefinedTemplateKind;
 
-use crate::cli::PredefinedTemplateKind;
 use crate::dialog::{dialog_root, DialogError};
 
-mod cli;
 mod dialog;
 
 #[derive(clap::Parser, Debug)]
