@@ -7,40 +7,39 @@ use inquire::ui::{Color, RenderConfig};
 use inquire::{min_length, Confirm, Select, Text};
 use similar::ChangeTag;
 
-use cargo_wizard::{parse_workspace, resolve_manifest_path, CargoManifest};
+use cargo_wizard::{parse_workspace, resolve_manifest_path, CargoConfig, CargoManifest};
 pub use error::{DialogError, DialogResult};
 
-use crate::cli::PredefinedTemplate;
+use crate::cli::PredefinedTemplateKind;
 
 mod error;
 
-fn template_style() -> Style {
-    Style::new().cyan()
-}
-
-fn profile_style() -> Style {
-    Style::new().green()
-}
-
-fn command_style() -> Style {
-    Style::new().yellow()
-}
-
 pub fn dialog_root() -> DialogResult<()> {
-    let template = dialog_template()?;
+    let template_kind = dialog_template()?;
     let manifest_path = resolve_manifest_path().context("Cannot resolve Cargo.toml path")?;
     let workspace = parse_workspace(&manifest_path)?;
     let profile = dialog_profile(&workspace.manifest)?;
 
-    if let Some(manifest) = dialog_apply_diff(workspace.manifest, &profile, template.clone())? {
+    if let Some(manifest) = dialog_apply_diff(workspace.manifest, &profile, template_kind.clone())?
+    {
         manifest.write()?;
+
+        if let Some(config_template) = template_kind.build_template().config {
+            let config = workspace
+                .config
+                .unwrap_or_else(|| CargoConfig::empty_from_manifest(&manifest_path));
+            let config = config
+                .apply_template(config_template)
+                .context("Cannot apply config.toml template")?;
+            config.write()?;
+        }
 
         println!(
             "✅ Template {} applied to profile {}.",
-            template_style().apply_to(match template {
-                PredefinedTemplate::FastCompile => "FastCompile",
-                PredefinedTemplate::FastRuntime => "FastRuntime",
-                PredefinedTemplate::MinSize => "MinSize",
+            template_style().apply_to(match template_kind {
+                PredefinedTemplateKind::FastCompile => "FastCompile",
+                PredefinedTemplateKind::FastRuntime => "FastRuntime",
+                PredefinedTemplateKind::MinSize => "MinSize",
             }),
             profile_style().apply_to(&profile)
         );
@@ -57,7 +56,7 @@ pub fn dialog_root() -> DialogResult<()> {
             );
         }
 
-        if let PredefinedTemplate::FastRuntime = template {
+        if let PredefinedTemplateKind::FastRuntime = template_kind {
             println!(
                 "\nTip: Consider using the {} subcommand to further optimize your binary.",
                 command_style().apply_to("cargo-pgo")
@@ -71,7 +70,7 @@ pub fn dialog_root() -> DialogResult<()> {
 fn dialog_apply_diff(
     manifest: CargoManifest,
     profile: &str,
-    template: PredefinedTemplate,
+    template_kind: PredefinedTemplateKind,
 ) -> DialogResult<Option<CargoManifest>> {
     let orig_manifest = manifest.clone();
     let orig_profile_text = orig_manifest
@@ -79,7 +78,8 @@ fn dialog_apply_diff(
         .map(|t| t.to_string())
         .unwrap_or_default();
 
-    let manifest = manifest.apply_template(profile, template.resolve_to_template())?;
+    let template = template_kind.build_template();
+    let manifest = manifest.apply_template(profile, template.profile)?;
     let new_profile_text = manifest
         .get_profile(profile)
         .map(|t| t.to_string())
@@ -202,15 +202,15 @@ fn dialog_profile_name() -> DialogResult<String> {
         .prompt()?)
 }
 
-fn dialog_template() -> DialogResult<PredefinedTemplate> {
-    struct Template(PredefinedTemplate);
+fn dialog_template() -> DialogResult<PredefinedTemplateKind> {
+    struct Template(PredefinedTemplateKind);
 
     impl Display for Template {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             let msg = match self.0 {
-                PredefinedTemplate::FastCompile => "FastCompile: minimize compile times",
-                PredefinedTemplate::FastRuntime => "FastRuntime: maximize runtime performance",
-                PredefinedTemplate::MinSize => "MinSize: minimize binary size",
+                PredefinedTemplateKind::FastCompile => "FastCompile: minimize compile times",
+                PredefinedTemplateKind::FastRuntime => "FastRuntime: maximize runtime performance",
+                PredefinedTemplateKind::MinSize => "MinSize: minimize binary size",
             };
             f.write_str(msg)
         }
@@ -218,7 +218,7 @@ fn dialog_template() -> DialogResult<PredefinedTemplate> {
 
     let selected = Select::new(
         "Select the template that you want to apply:",
-        PredefinedTemplate::value_variants()
+        PredefinedTemplateKind::value_variants()
             .iter()
             .map(|template| Template(template.clone()))
             .collect(),
@@ -245,4 +245,16 @@ fn profile_render_config() -> RenderConfig<'static> {
         .selected_option
         .map(|s| s.with_fg(Color::DarkGreen));
     render_config
+}
+
+fn template_style() -> Style {
+    Style::new().cyan()
+}
+
+fn profile_style() -> Style {
+    Style::new().green()
+}
+
+fn command_style() -> Style {
+    Style::new().yellow()
 }

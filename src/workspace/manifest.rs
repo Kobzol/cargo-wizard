@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Context;
 use toml_edit::{table, value, Document, Table};
 
-use crate::toml::{TemplateEntry, TomlTableTemplate};
+use crate::toml::{TableItem, TomlTableTemplate};
 
 /// Tries to resolve the workspace root manifest (Cargo.toml) path from the current directory.
 pub fn resolve_manifest_path() -> anyhow::Result<PathBuf> {
@@ -81,7 +81,7 @@ impl CargoManifest {
                 anyhow::anyhow!("The profile.{name} table in Cargo.toml is not a table")
             })?;
 
-        let mut values = template.template.fields.clone();
+        let mut values = template.template.items.clone();
 
         if !is_builtin_profile(name) {
             let inherits = match template.inherits {
@@ -90,7 +90,7 @@ impl CargoManifest {
             };
 
             // Add "inherits" to the table
-            values.insert(0, TemplateEntry::string("inherits", inherits));
+            values.insert(0, TableItem::string("inherits", inherits));
         }
 
         for entry in values {

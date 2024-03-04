@@ -76,7 +76,7 @@ members = ["bar"]
 
 #[test]
 fn apply_missing_builtin() -> anyhow::Result<()> {
-    let mut project = init_cargo_project()?;
+    let project = init_cargo_project()?;
 
     project
         .cmd(&["apply", "dev", "fast-compile"])
@@ -130,7 +130,7 @@ debug = 1
 
 #[test]
 fn apply_missing_custom() -> anyhow::Result<()> {
-    let mut project = init_cargo_project()?;
+    let project = init_cargo_project()?;
 
     project
         .cmd(&["apply", "custom1", "fast-compile"])
@@ -231,7 +231,7 @@ codegen-units    = 10
 
 #[test]
 fn apply_fast_runtime_template() -> anyhow::Result<()> {
-    let mut project = init_cargo_project()?;
+    let project = init_cargo_project()?;
 
     project
         .cmd(&["apply", "custom", "fast-runtime"])
@@ -256,7 +256,7 @@ fn apply_fast_runtime_template() -> anyhow::Result<()> {
 
 #[test]
 fn apply_min_size_template() -> anyhow::Result<()> {
-    let mut project = init_cargo_project()?;
+    let project = init_cargo_project()?;
 
     project
         .cmd(&["apply", "custom", "min-size"])

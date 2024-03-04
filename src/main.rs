@@ -5,7 +5,7 @@ use clap::Parser;
 
 use cargo_wizard::{parse_workspace, resolve_manifest_path};
 
-use crate::cli::PredefinedTemplate;
+use crate::cli::PredefinedTemplateKind;
 use crate::dialog::{dialog_root, DialogError};
 
 mod cli;
@@ -31,7 +31,7 @@ struct ProfileArgs {
     /// Cargo profile that should be created or modified.
     profile: String,
     /// Template that will be applied to the selected Cargo profile.
-    template: PredefinedTemplate,
+    template: PredefinedTemplateKind,
 }
 
 #[derive(clap::Parser, Debug)]
@@ -59,8 +59,10 @@ fn main() -> anyhow::Result<()> {
                     None => resolve_manifest_path().context("Cannot resolve Cargo.toml path")?,
                 };
                 let workspace = parse_workspace(&manifest_path)?;
-                let template = args.template.resolve_to_template();
-                let manifest = workspace.manifest.apply_template(&args.profile, template)?;
+                let template = args.template.build_template();
+                let manifest = workspace
+                    .manifest
+                    .apply_template(&args.profile, template.profile)?;
                 manifest.write()?;
             }
             None => {

@@ -8,6 +8,7 @@
 //! You can also use this crate as a library, although it probably won't be very useful.
 
 pub use templates::*;
+pub use workspace::config::CargoConfig;
 pub use workspace::manifest::resolve_manifest_path;
 pub use workspace::manifest::CargoManifest;
 pub use workspace::manifest::TomlProfileTemplate;

@@ -31,22 +31,35 @@ impl CargoProject {
         self
     }
 
-    pub fn read<P: AsRef<Path>>(&mut self, path: P) -> String {
+    pub fn read<P: AsRef<Path>>(&self, path: P) -> String {
         let path = path.as_ref();
         std::fs::read_to_string(self.path(path))
             .unwrap_or_else(|e| panic!("Cannot read path {}: {e:?}", path.display()))
     }
 
-    pub fn manifest(&mut self, code: &str) -> &mut Self {
-        self.file("Cargo.toml", code)
+    pub fn manifest(&mut self, contents: &str) -> &mut Self {
+        self.file("Cargo.toml", contents)
     }
 
-    pub fn manifest_path(&mut self) -> PathBuf {
+    pub fn manifest_path(&self) -> PathBuf {
         self.path("Cargo.toml")
     }
 
-    pub fn read_manifest(&mut self) -> String {
+    pub fn read_manifest(&self) -> String {
         let path = self.manifest_path();
+        self.read(path)
+    }
+
+    pub fn config(&mut self, contents: &str) -> &mut Self {
+        self.file(self.config_path(), contents)
+    }
+
+    pub fn config_path(&self) -> PathBuf {
+        self.path(".cargo/config.toml")
+    }
+
+    pub fn read_config(&self) -> String {
+        let path = self.config_path();
         self.read(path)
     }
 }

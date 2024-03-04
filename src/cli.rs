@@ -1,9 +1,7 @@
-use cargo_wizard::{
-    fast_compile_template, fast_runtime_template, min_size_template, TomlProfileTemplate,
-};
+use cargo_wizard::{fast_compile_template, fast_runtime_template, min_size_template, Template};
 
 #[derive(clap::ValueEnum, Clone, Debug)]
-pub enum PredefinedTemplate {
+pub enum PredefinedTemplateKind {
     /// Profile designed for fast compilation times.
     FastCompile,
     /// Profile designed for fast runtime performance.
@@ -12,12 +10,12 @@ pub enum PredefinedTemplate {
     MinSize,
 }
 
-impl PredefinedTemplate {
-    pub fn resolve_to_template(&self) -> TomlProfileTemplate {
+impl PredefinedTemplateKind {
+    pub fn build_template(&self) -> Template {
         match self {
-            PredefinedTemplate::FastCompile => fast_compile_template(),
-            PredefinedTemplate::FastRuntime => fast_runtime_template(),
-            PredefinedTemplate::MinSize => min_size_template(),
+            PredefinedTemplateKind::FastCompile => fast_compile_template(),
+            PredefinedTemplateKind::FastRuntime => fast_runtime_template(),
+            PredefinedTemplateKind::MinSize => min_size_template(),
         }
     }
 }

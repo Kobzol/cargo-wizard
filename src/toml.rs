@@ -1,12 +1,12 @@
 use toml_edit::Formatted;
 
 #[derive(Clone, Debug)]
-pub struct TemplateEntry {
+pub struct TableItem {
     pub name: String,
     pub value: TomlValue,
 }
 
-impl TemplateEntry {
+impl TableItem {
     pub fn int(name: &str, value: i64) -> Self {
         Self {
             name: name.to_string(),
@@ -31,7 +31,7 @@ impl TemplateEntry {
 
 /// A template that contains prefilled values that can add or replace fields in a TOML table.
 pub struct TomlTableTemplate {
-    pub fields: Vec<TemplateEntry>,
+    pub items: Vec<TableItem>,
 }
 
 #[derive(Clone, Debug)]
