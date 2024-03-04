@@ -3,10 +3,10 @@ use std::fmt::{Display, Formatter};
 use anyhow::Context;
 use clap::ValueEnum;
 use console::Style;
-use inquire::ui::{Color, RenderConfig};
 use inquire::{min_length, Select, Text};
+use inquire::ui::{Color, RenderConfig};
 
-use cargo_wizard::{parse_manifest, resolve_manifest_path, ParsedManifest};
+use cargo_wizard::{parse_manifest, ParsedManifest, resolve_manifest_path};
 
 use crate::cli::PredefinedTemplate;
 
@@ -27,7 +27,7 @@ pub fn dialog_root() -> anyhow::Result<()> {
     manifest.write(&manifest_path)?;
 
     println!(
-        "Template {} applied to profile {}",
+        "Template {} applied to profile {}.",
         template_style().apply_to(match template {
             PredefinedTemplate::FastCompile => "FastCompile",
             PredefinedTemplate::FastRuntime => "FastRuntime",
@@ -59,7 +59,7 @@ fn dialog_profile(manifest: &ParsedManifest) -> anyhow::Result<String> {
                 Profile::Dev => f.write_str("dev (builtin)"),
                 Profile::Release => f.write_str("release (builtin)"),
                 Profile::Custom(name) => f.write_str(name),
-                Profile::CreateNew => f.write_str("Create a new profile"),
+                Profile::CreateNew => f.write_str("<Create a new profile>"),
             }
         }
     }
@@ -94,7 +94,7 @@ fn dialog_profile(manifest: &ParsedManifest) -> anyhow::Result<String> {
 }
 
 fn dialog_profile_name() -> anyhow::Result<String> {
-    Ok(Text::new("Select profile name")
+    Ok(Text::new("Select profile name:")
         .with_validator(min_length!(1))
         .with_render_config(profile_render_config())
         .prompt()?)
@@ -106,9 +106,9 @@ fn dialog_template() -> anyhow::Result<PredefinedTemplate> {
     impl Display for Template {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             let msg = match self.0 {
-                PredefinedTemplate::FastCompile => "FastCompile: minimize compile times",
-                PredefinedTemplate::FastRuntime => "FastRuntime: maximize runtime performance",
-                PredefinedTemplate::MinSize => "MinSize: minimize binary size",
+                PredefinedTemplate::FastCompile => "♻️ FastCompile: minimize compile times",
+                PredefinedTemplate::FastRuntime => "🏁 FastRuntime: maximize runtime performance",
+                PredefinedTemplate::MinSize => "🗜️MinSize: minimize binary size",
             };
             f.write_str(msg)
         }
