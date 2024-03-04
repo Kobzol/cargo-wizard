@@ -3,10 +3,10 @@ use std::fmt::{Display, Formatter};
 use anyhow::Context;
 use clap::ValueEnum;
 use console::Style;
-use inquire::{min_length, Select, Text};
 use inquire::ui::{Color, RenderConfig};
+use inquire::{min_length, Select, Text};
 
-use cargo_wizard::{parse_manifest, ParsedManifest, resolve_manifest_path};
+use cargo_wizard::{parse_manifest, resolve_manifest_path, ParsedManifest};
 
 use crate::cli::PredefinedTemplate;
 
@@ -35,6 +35,13 @@ pub fn dialog_root() -> anyhow::Result<()> {
         }),
         profile_style().apply_to(profile)
     );
+
+    if let PredefinedTemplate::FastRuntime = template {
+        println!(
+            "Consider also using the {} subcommand to further optimize your binary.",
+            Style::new().yellow().apply_to("cargo-pgo")
+        );
+    }
 
     Ok(())
 }
