@@ -18,11 +18,13 @@ pub fn resolve_manifest_path() -> anyhow::Result<PathBuf> {
     Ok(manifest_path)
 }
 
+#[derive(Clone)]
 pub enum BuiltinProfile {
     Dev,
     Release,
 }
 
+#[derive(Clone)]
 pub struct TomlProfileTemplate {
     pub inherits: BuiltinProfile,
     pub template: TomlTableTemplate,
@@ -45,6 +47,10 @@ impl CargoManifest {
             document,
             path: path.to_path_buf(),
         })
+    }
+
+    pub fn get_path(&self) -> &Path {
+        &self.path
     }
 
     pub fn get_profiles(&self) -> Vec<String> {

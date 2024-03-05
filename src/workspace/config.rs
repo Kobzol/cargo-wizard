@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
-use toml_edit::{table, value, Array, Document, Formatted, Value};
+use toml_edit::{Array, Document, Formatted, table, value, Value};
 
 #[derive(Debug)]
 pub struct CargoConfig {
@@ -28,6 +28,10 @@ impl CargoConfig {
             document,
             path: path.to_path_buf(),
         })
+    }
+
+    pub fn get_text(&self) -> String {
+        self.document.to_string()
     }
 
     pub fn apply_template(mut self, template: ConfigTemplate) -> anyhow::Result<Self> {
@@ -71,7 +75,7 @@ impl CargoConfig {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct ConfigTemplate {
     pub flags: Vec<String>,
 }

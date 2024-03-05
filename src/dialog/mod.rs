@@ -7,7 +7,9 @@ use inquire::{Confirm, min_length, Select, Text};
 use inquire::ui::{Color, RenderConfig};
 use similar::ChangeTag;
 
-use cargo_wizard::{CargoConfig, CargoManifest, parse_workspace, resolve_manifest_path};
+use cargo_wizard::{
+    CargoConfig, CargoManifest, CargoWorkspace, parse_workspace, resolve_manifest_path, Template,
+};
 use cargo_wizard::PredefinedTemplateKind;
 pub use error::{DialogError, DialogResult};
 
@@ -21,20 +23,11 @@ pub fn dialog_root(cli_config: CliConfig) -> DialogResult<()> {
     let workspace = parse_workspace(&manifest_path)?;
     let profile = dialog_profile(&cli_config, &workspace.manifest)?;
 
-    let diff_result = dialog_apply_diff(workspace.manifest, &profile, template_kind.clone())?;
+    let template = template_kind.build_template();
+    let diff_result = dialog_apply_diff(workspace, &profile, template)?;
     match diff_result {
-        DiffPromptResponse::Accepted { manifest } => {
-            manifest.write()?;
-
-            if let Some(config_template) = template_kind.build_template().config {
-                let config = workspace
-                    .config
-                    .unwrap_or_else(|| CargoConfig::empty_from_manifest(&manifest_path));
-                let config = config
-                    .apply_template(config_template)
-                    .context("Cannot apply config.toml template")?;
-                config.write()?;
-            }
+        DiffPromptResponse::Accepted(workspace) => {
+            workspace.write()?;
 
             on_template_applied(template_kind, &profile);
         }
@@ -80,21 +73,22 @@ fn on_template_applied(template: PredefinedTemplateKind, profile: &str) {
 }
 
 enum DiffPromptResponse {
-    Accepted { manifest: CargoManifest },
+    Accepted(CargoWorkspace),
     Denied,
     NoDiff,
 }
 
 fn dialog_apply_diff(
-    manifest: CargoManifest,
+    mut workspace: CargoWorkspace,
     profile: &str,
-    template_kind: PredefinedTemplateKind,
+    template: Template,
 ) -> DialogResult<DiffPromptResponse> {
-    let orig_manifest_text = manifest.get_text();
-
-    let template = template_kind.build_template();
-    let manifest = manifest.apply_template(profile, template.profile)?;
-    let new_manifest_text = manifest.get_text();
+    // Cargo.toml
+    let orig_manifest_text = workspace.manifest.get_text();
+    workspace.manifest = workspace
+        .manifest
+        .apply_template(profile, template.profile)?;
+    let new_manifest_text = workspace.manifest.get_text();
 
     let manifest_diff = render_diff(&orig_manifest_text, &new_manifest_text);
     let manifest_changed = !manifest_diff.trim().is_empty();
@@ -104,16 +98,50 @@ fn dialog_apply_diff(
         println!("{manifest_diff}");
     }
 
-    if !manifest_changed {
+    // .cargo/config.toml
+    let config_diff = if let Some(config_template) = template.config {
+        let config = workspace
+            .config
+            .unwrap_or_else(|| CargoConfig::empty_from_manifest(&workspace.manifest.get_path()));
+
+        let old_config_text = config.get_text();
+        let new_config = config
+            .apply_template(config_template)
+            .context("Cannot apply config.toml template")?;
+        let new_manifest_text = new_config.get_text();
+        let config_diff = render_diff(&old_config_text, &new_manifest_text);
+
+        workspace.config = Some(new_config);
+        if config_diff.trim().is_empty() {
+            None
+        } else {
+            Some(config_diff)
+        }
+    } else {
+        None
+    };
+    let config_changed = config_diff.is_some();
+    if let Some(config_diff) = config_diff {
+        clear_line();
+        println!("{}", file_style().apply_to(".cargo/config.toml"));
+        println!("{config_diff}");
+    }
+
+    if !manifest_changed && !config_changed {
         return Ok(DiffPromptResponse::NoDiff);
     }
 
-    let answer = Confirm::new("Do you want to apply the above diff?")
-        .with_default(true)
-        .prompt()?;
+    let multiple_diffs = manifest_changed && config_changed;
+
+    let answer = Confirm::new(&format!(
+        "Do you want to apply the above diff{}?",
+        if multiple_diffs { "s" } else { "" }
+    ))
+    .with_default(true)
+    .prompt()?;
 
     Ok(match answer {
-        true => DiffPromptResponse::Accepted { manifest },
+        true => DiffPromptResponse::Accepted(workspace),
         false => DiffPromptResponse::Denied,
     })
 }

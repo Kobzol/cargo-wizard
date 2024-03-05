@@ -4,7 +4,7 @@ use anyhow::Context;
 
 use manifest::CargoManifest;
 
-use crate::workspace::config::{config_path_from_manifest_path, CargoConfig};
+use crate::workspace::config::{CargoConfig, config_path_from_manifest_path};
 
 pub mod config;
 pub mod manifest;
@@ -12,6 +12,16 @@ pub mod manifest;
 pub struct CargoWorkspace {
     pub manifest: CargoManifest,
     pub config: Option<CargoConfig>,
+}
+
+impl CargoWorkspace {
+    pub fn write(self) -> anyhow::Result<()> {
+        self.manifest.write()?;
+        if let Some(config) = self.config {
+            config.write()?;
+        }
+        Ok(())
+    }
 }
 
 /// Parses a Cargo workspace from a Cargo.toml manifest path.

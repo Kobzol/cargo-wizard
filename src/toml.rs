@@ -30,6 +30,7 @@ impl TableItem {
 }
 
 /// A template that contains prefilled values that can add or replace fields in a TOML table.
+#[derive(Clone)]
 pub struct TomlTableTemplate {
     pub items: Vec<TableItem>,
 }
