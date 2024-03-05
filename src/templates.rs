@@ -56,7 +56,7 @@ pub fn fast_runtime_template() -> Template {
             },
         },
         config: Some(ConfigTemplate {
-            flags: vec!["-Ctarget-cpu=native".to_string()],
+            rustflags: vec!["-Ctarget-cpu=native".to_string()],
         }),
     }
 }

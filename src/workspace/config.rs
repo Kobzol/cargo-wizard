@@ -50,13 +50,21 @@ impl CargoConfig {
                 .filter_map(|v| v.as_str())
                 .map(|s| s.to_string())
                 .collect();
-            for arg in template.flags {
+            for arg in template.rustflags {
                 if !existing_strings.contains(&arg) {
                     array.push(Value::String(Formatted::new(arg)));
                 }
             }
-        } else if let Some(_value) = flags.as_value_mut() {
-            todo!();
+        } else if let Some(val) = flags.as_value_mut().filter(|v| v.is_str()) {
+            let flattened_flags = template.rustflags.join(" ");
+            let mut original_value = val.as_str().unwrap_or_default().to_string();
+            if !original_value.ends_with(' ') && !original_value.is_empty() {
+                original_value.push(' ');
+            }
+            original_value.push_str(&flattened_flags);
+            let decor = val.decor().clone();
+            *val = Value::String(Formatted::new(original_value));
+            *val.decor_mut() = decor;
         } else {
             return Err(anyhow::anyhow!(
                 "build.rustflags in config.toml is not a string or an array"
@@ -77,7 +85,7 @@ impl CargoConfig {
 
 #[derive(Clone, Default, Debug)]
 pub struct ConfigTemplate {
-    pub flags: Vec<String>,
+    pub rustflags: Vec<String>,
 }
 
 pub fn config_path_from_manifest_path(manifest_path: &Path) -> PathBuf {
@@ -85,4 +93,131 @@ pub fn config_path_from_manifest_path(manifest_path: &Path) -> PathBuf {
         .parent()
         .map(|p| p.join(".cargo").join("config.toml"))
         .expect("Manifest path has no parent")
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use toml_edit::Document;
+
+    use crate::CargoConfig;
+    use crate::workspace::config::ConfigTemplate;
+
+    #[test]
+    fn create_rustflags() {
+        let template = ConfigTemplate {
+            rustflags: vec!["-CFoo=bar".to_string()],
+        };
+        let config = create_empty_config();
+        let config = config.apply_template(template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = ["-CFoo=bar"]
+        "###);
+    }
+
+    #[test]
+    fn append_to_array_rustflags() {
+        let template = ConfigTemplate {
+            rustflags: vec!["-CFoo=bar".to_string()],
+        };
+        let config = create_config(
+            r#"
+[build]
+rustflags = ["-Cbar=foo"]
+"#,
+        );
+        let config = config.apply_template(template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = ["-Cbar=foo", "-CFoo=bar"]
+        "###);
+    }
+
+    #[test]
+    fn ignore_existing_entry() {
+        let template = ConfigTemplate {
+            rustflags: vec!["-CFoo=bar".to_string()],
+        };
+        let config = create_config(
+            r#"
+[build]
+rustflags = ["-CFoo=bar"]
+"#,
+        );
+        let config = config.apply_template(template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = ["-CFoo=bar"]
+        "###);
+    }
+
+    #[test]
+    fn append_to_empty_string_rustflags() {
+        let template = ConfigTemplate {
+            rustflags: vec!["-CFoo=bar".to_string()],
+        };
+        let config = create_config(
+            r#"
+[build]
+rustflags = ""
+"#,
+        );
+        let config = config.apply_template(template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = "-CFoo=bar"
+        "###);
+    }
+
+    #[test]
+    fn append_to_string_rustflags() {
+        let template = ConfigTemplate {
+            rustflags: vec!["-CFoo=bar".to_string()],
+        };
+        let config = create_config(
+            r#"
+[build]
+rustflags = "-Ctarget-cpu=native"
+"#,
+        );
+        let config = config.apply_template(template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = "-Ctarget-cpu=native -CFoo=bar"
+        "###);
+    }
+
+    #[test]
+    fn append_to_string_rustflags_keep_formatting() {
+        let template = ConfigTemplate {
+            rustflags: vec!["-CFoo=bar".to_string()],
+        };
+        let config = create_config(
+            r#"
+[build]
+rustflags = "-Ctarget-cpu=native" # Foo
+"#,
+        );
+        let config = config.apply_template(template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = "-Ctarget-cpu=native -CFoo=bar" # Foo
+        "###);
+    }
+
+    fn create_config(text: &str) -> CargoConfig {
+        CargoConfig {
+            path: Default::default(),
+            document: Document::from_str(text).unwrap(),
+        }
+    }
+
+    fn create_empty_config() -> CargoConfig {
+        CargoConfig {
+            path: Default::default(),
+            document: Default::default(),
+        }
+    }
 }
