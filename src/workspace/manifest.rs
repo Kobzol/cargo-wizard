@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
-use toml_edit::{table, value, Document, Table};
+use toml_edit::{Document, table, value};
 
 use crate::toml::{TableItem, TomlTableTemplate};
 
@@ -55,9 +55,8 @@ impl CargoManifest {
             .unwrap_or_default()
     }
 
-    pub fn get_profile(&self, name: &str) -> Option<&Table> {
-        let profiles_table = self.document.get("profile").and_then(|p| p.as_table())?;
-        profiles_table.get(name).and_then(|p| p.as_table())
+    pub fn get_text(&self) -> String {
+        self.document.to_string()
     }
 
     pub fn apply_template(

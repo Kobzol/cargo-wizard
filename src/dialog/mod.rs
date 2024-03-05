@@ -35,6 +35,7 @@ pub fn dialog_root(cli_config: CliConfig) -> DialogResult<()> {
             config.write()?;
         }
 
+        clear_line();
         println!(
             "✅ Template {} applied to profile {}.",
             template_style().apply_to(match template_kind {
@@ -73,25 +74,18 @@ fn dialog_apply_diff(
     profile: &str,
     template_kind: PredefinedTemplateKind,
 ) -> DialogResult<Option<CargoManifest>> {
-    let orig_manifest = manifest.clone();
-    let orig_profile_text = orig_manifest
-        .get_profile(profile)
-        .map(|t| t.to_string())
-        .unwrap_or_default();
+    let orig_manifest_text = manifest.get_text();
 
     let template = template_kind.build_template();
     let manifest = manifest.apply_template(profile, template.profile)?;
-    let new_profile_text = manifest
-        .get_profile(profile)
-        .map(|t| t.to_string())
-        .unwrap_or_default();
+    let new_manifest_text = manifest.get_text();
 
-    let diff = calculate_diff(&orig_profile_text, &new_profile_text);
-    println!("\r{diff}");
+    let diff = render_diff(&orig_manifest_text, &new_manifest_text);
+    clear_line();
+    println!("{diff}");
 
     let answer = Confirm::new(&format!(
-        "Do you want to apply the above diff to the {} profile?",
-        profile_style().apply_to(profile)
+        "Do you want to apply the above diff to the {profile} profile?",
     ))
     .with_default(true)
     .prompt()?;
@@ -100,7 +94,7 @@ fn dialog_apply_diff(
 }
 
 // Taken from https://github.com/mitsuhiko/similar/blob/main/examples/terminal-inline.rs
-fn calculate_diff(original: &str, new: &str) -> String {
+fn render_diff(original: &str, new: &str) -> String {
     use std::fmt::Write;
 
     struct Line(Option<usize>);
@@ -125,11 +119,11 @@ fn calculate_diff(original: &str, new: &str) -> String {
                 let (sign, s) = match change.tag() {
                     ChangeTag::Delete => ("-", Style::new().red()),
                     ChangeTag::Insert => ("+", Style::new().green()),
-                    ChangeTag::Equal => (" ", Style::new().dim()),
+                    ChangeTag::Equal => ("|", Style::new().dim()),
                 };
                 write!(
                     output,
-                    "{}{} |{}",
+                    "{}{} {} ",
                     style(Line(change.old_index())).dim(),
                     style(Line(change.new_index())).dim(),
                     s.apply_to(sign).bold(),
@@ -266,4 +260,9 @@ fn profile_style() -> Style {
 
 fn command_style() -> Style {
     Style::new().yellow()
+}
+
+/// Clear the current line to print arbitrary text after a prompt.
+fn clear_line() {
+    print!("\r");
 }
