@@ -3,12 +3,12 @@ use std::fmt::{Display, Formatter};
 use anyhow::Context;
 use clap::ValueEnum;
 use console::{style, Style};
+use inquire::{Confirm, min_length, Select, Text};
 use inquire::ui::{Color, RenderConfig};
-use inquire::{min_length, Confirm, Select, Text};
 use similar::ChangeTag;
 
+use cargo_wizard::{CargoConfig, CargoManifest, parse_workspace, resolve_manifest_path};
 use cargo_wizard::PredefinedTemplateKind;
-use cargo_wizard::{parse_workspace, resolve_manifest_path, CargoConfig, CargoManifest};
 pub use error::{DialogError, DialogResult};
 
 use crate::cli::CliConfig;
@@ -21,76 +21,101 @@ pub fn dialog_root(cli_config: CliConfig) -> DialogResult<()> {
     let workspace = parse_workspace(&manifest_path)?;
     let profile = dialog_profile(&cli_config, &workspace.manifest)?;
 
-    if let Some(manifest) = dialog_apply_diff(workspace.manifest, &profile, template_kind.clone())?
-    {
-        manifest.write()?;
+    let diff_result = dialog_apply_diff(workspace.manifest, &profile, template_kind.clone())?;
+    match diff_result {
+        DiffPromptResponse::Accepted { manifest } => {
+            manifest.write()?;
 
-        if let Some(config_template) = template_kind.build_template().config {
-            let config = workspace
-                .config
-                .unwrap_or_else(|| CargoConfig::empty_from_manifest(&manifest_path));
-            let config = config
-                .apply_template(config_template)
-                .context("Cannot apply config.toml template")?;
-            config.write()?;
+            if let Some(config_template) = template_kind.build_template().config {
+                let config = workspace
+                    .config
+                    .unwrap_or_else(|| CargoConfig::empty_from_manifest(&manifest_path));
+                let config = config
+                    .apply_template(config_template)
+                    .context("Cannot apply config.toml template")?;
+                config.write()?;
+            }
+
+            on_template_applied(template_kind, &profile);
         }
-
-        clear_line();
-        println!(
-            "✅ Template {} applied to profile {}.",
-            template_style().apply_to(match template_kind {
-                PredefinedTemplateKind::FastCompile => "FastCompile",
-                PredefinedTemplateKind::FastRuntime => "FastRuntime",
-                PredefinedTemplateKind::MinSize => "MinSize",
-            }),
-            profile_style().apply_to(&profile)
-        );
-
-        let profile_flag = match profile.as_str() {
-            "dev" => None,
-            "release" => Some("--release".to_string()),
-            profile => Some(format!("--profile={profile}")),
-        };
-        if let Some(flag) = profile_flag {
-            println!(
-                "❗ Do not forget to run `{}` to use the selected profile.",
-                command_style().apply_to(format!("cargo <cmd> {flag}"))
-            );
-        }
-
-        if let PredefinedTemplateKind::FastRuntime = template_kind {
-            println!(
-                "\nTip: Consider using the {} subcommand to further optimize your binary.",
-                command_style().apply_to("cargo-pgo")
-            );
+        DiffPromptResponse::Denied => {}
+        DiffPromptResponse::NoDiff => {
+            println!("Nothing to apply, the profile already matched the template");
         }
     }
 
     Ok(())
 }
 
+fn on_template_applied(template: PredefinedTemplateKind, profile: &str) {
+    clear_line();
+    println!(
+        "✅ Template {} applied to profile {}.",
+        template_style().apply_to(match template {
+            PredefinedTemplateKind::FastCompile => "FastCompile",
+            PredefinedTemplateKind::FastRuntime => "FastRuntime",
+            PredefinedTemplateKind::MinSize => "MinSize",
+        }),
+        profile_style().apply_to(&profile)
+    );
+
+    let profile_flag = match profile {
+        "dev" => None,
+        "release" => Some("--release".to_string()),
+        profile => Some(format!("--profile={profile}")),
+    };
+    if let Some(flag) = profile_flag {
+        println!(
+            "❗ Do not forget to run `{}` to use the selected profile.",
+            command_style().apply_to(format!("cargo <cmd> {flag}"))
+        );
+    }
+
+    if let PredefinedTemplateKind::FastRuntime = template {
+        println!(
+            "\nTip: Consider using the {} subcommand to further optimize your binary.",
+            command_style().apply_to("cargo-pgo")
+        );
+    }
+}
+
+enum DiffPromptResponse {
+    Accepted { manifest: CargoManifest },
+    Denied,
+    NoDiff,
+}
+
 fn dialog_apply_diff(
     manifest: CargoManifest,
     profile: &str,
     template_kind: PredefinedTemplateKind,
-) -> DialogResult<Option<CargoManifest>> {
+) -> DialogResult<DiffPromptResponse> {
     let orig_manifest_text = manifest.get_text();
 
     let template = template_kind.build_template();
     let manifest = manifest.apply_template(profile, template.profile)?;
     let new_manifest_text = manifest.get_text();
 
-    let diff = render_diff(&orig_manifest_text, &new_manifest_text);
-    clear_line();
-    println!("{diff}");
+    let manifest_diff = render_diff(&orig_manifest_text, &new_manifest_text);
+    let manifest_changed = !manifest_diff.trim().is_empty();
+    if manifest_changed {
+        clear_line();
+        println!("{}", file_style().apply_to("Cargo.toml"));
+        println!("{manifest_diff}");
+    }
 
-    let answer = Confirm::new(&format!(
-        "Do you want to apply the above diff to the {profile} profile?",
-    ))
-    .with_default(true)
-    .prompt()?;
+    if !manifest_changed {
+        return Ok(DiffPromptResponse::NoDiff);
+    }
 
-    Ok(answer.then_some(manifest))
+    let answer = Confirm::new("Do you want to apply the above diff?")
+        .with_default(true)
+        .prompt()?;
+
+    Ok(match answer {
+        true => DiffPromptResponse::Accepted { manifest },
+        false => DiffPromptResponse::Denied,
+    })
 }
 
 // Taken from https://github.com/mitsuhiko/similar/blob/main/examples/terminal-inline.rs
@@ -260,6 +285,10 @@ fn profile_style() -> Style {
 
 fn command_style() -> Style {
     Style::new().yellow()
+}
+
+fn file_style() -> Style {
+    Style::new().blue()
 }
 
 /// Clear the current line to print arbitrary text after a prompt.
