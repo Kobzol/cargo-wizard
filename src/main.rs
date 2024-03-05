@@ -55,6 +55,7 @@ struct ProfileArgs {
 
 #[derive(clap::Parser, Debug)]
 enum SubCommand {
+    /// Apply a predefined template to the selected profile.
     Apply {
         #[clap(flatten)]
         args: ProfileArgs,
