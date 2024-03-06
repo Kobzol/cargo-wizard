@@ -8,7 +8,7 @@ pub enum DialogError {
     Generic(#[from] anyhow::Error),
 }
 
-pub type DialogResult<T> = Result<T, DialogError>;
+pub type PromptResult<T> = Result<T, DialogError>;
 
 impl From<InquireError> for DialogError {
     fn from(value: InquireError) -> Self {

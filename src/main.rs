@@ -3,11 +3,11 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Parser;
 
-use cargo_wizard::{parse_workspace, resolve_manifest_path};
 use cargo_wizard::PredefinedTemplateKind;
+use cargo_wizard::{parse_workspace, resolve_manifest_path};
 
 use crate::cli::CliConfig;
-use crate::dialog::{dialog_root, DialogError};
+use crate::dialog::{run_root_dialog, DialogError};
 
 mod cli;
 mod dialog;
@@ -90,7 +90,7 @@ fn main() -> anyhow::Result<()> {
                     manifest.write()?;
                 }
                 None => {
-                    if let Err(error) = dialog_root(cli_config) {
+                    if let Err(error) = run_root_dialog(cli_config) {
                         match error {
                             DialogError::Interrupted => {
                                 // Print an empty line when the app is interrupted, to avoid
