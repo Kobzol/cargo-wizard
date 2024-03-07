@@ -251,6 +251,11 @@ fn apply_fast_runtime_template() -> anyhow::Result<()> {
     panic = "abort"
     "###);
 
+    insta::assert_snapshot!(project.read_config(), @r###"
+    [build]
+    rustflags = ["-Ctarget-cpu=native"]
+    "###);
+
     Ok(())
 }
 

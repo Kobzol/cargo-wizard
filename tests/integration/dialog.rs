@@ -1,17 +1,11 @@
 use crate::utils::{init_cargo_project, CargoProject};
 
-#[test]
-fn dialog_fast_compile_dev() -> anyhow::Result<()> {
-    let project = init_cargo_project()?;
+// TODO: decline diff
 
-    let mut terminal = project.cmd(&[]).start_terminal()?;
-    terminal.expect("Select the template that you want to apply")?;
-    terminal.key_enter()?;
-    terminal.expect("Select the profile that you want to update/create")?;
-    terminal.key_enter()?;
-    terminal.line("y")?;
-    terminal.expect("Template FastCompile applied to profile dev")?;
-    terminal.wait()?;
+#[test]
+fn dialog_fast_compile_to_dev() -> anyhow::Result<()> {
+    let project = init_cargo_project()?;
+    apply_profile(&project, 0, 0)?;
 
     insta::assert_snapshot!(project.read_manifest(), @r###"
 
@@ -28,18 +22,10 @@ fn dialog_fast_compile_dev() -> anyhow::Result<()> {
 }
 
 #[test]
-fn dialog_fast_compile_release() -> anyhow::Result<()> {
+fn dialog_fast_compile_to_release() -> anyhow::Result<()> {
     let project = init_cargo_project()?;
 
-    let mut terminal = project.cmd(&[]).start_terminal()?;
-    terminal.expect("Select the template that you want to apply")?;
-    terminal.key_enter()?;
-    terminal.expect("Select the profile that you want to update/create")?;
-    terminal.key_down()?;
-    terminal.key_enter()?;
-    terminal.line("y")?;
-    terminal.expect("Template FastCompile applied to profile release")?;
-    terminal.wait()?;
+    apply_profile(&project, 0, 1)?;
 
     insta::assert_snapshot!(project.read_manifest(), @r###"
 
@@ -51,6 +37,8 @@ fn dialog_fast_compile_release() -> anyhow::Result<()> {
     [profile.release]
     debug = 0
     "###);
+
+    assert!(!project.file_exists(project.config_path()));
 
     Ok(())
 }
@@ -65,37 +53,69 @@ name = "foo"
 version = "0.1.0"
 edition = "2021"
 
-[profile.custom]
+[profile.custom1]
 inherits = "dev"
 debug = 1
 "#,
     );
 
     let mut terminal = project.cmd(&[]).start_terminal()?;
-    terminal.expect("Select the template that you want to apply")?;
     terminal.key_enter()?;
-    terminal.expect("Select the profile that you want to update/create")?;
-    terminal.expect("custom")?;
+    terminal.expect("custom1")?;
 
     Ok(())
 }
 
 #[test]
-fn dialog_fast_compile_custom_profile() -> anyhow::Result<()> {
+fn dialog_fast_compile_to_custom_profile() -> anyhow::Result<()> {
+    let mut project = init_cargo_project()?;
+    project.manifest(
+        r#"
+[package]
+name = "foo"
+version = "0.1.0"
+edition = "2021"
+
+[profile.custom1]
+inherits = "dev"
+debug = 1
+"#,
+    );
+
+    apply_profile(&project, 0, 2)?;
+
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.custom1]
+    inherits = "dev"
+    debug = 0
+    "###);
+
+    Ok(())
+}
+
+#[test]
+fn dialog_fast_compile_to_new_profile() -> anyhow::Result<()> {
     let project = init_cargo_project()?;
 
     let mut terminal = project.cmd(&[]).start_terminal()?;
-    terminal.expect("Select the template that you want to apply")?;
     terminal.key_enter()?;
-    terminal.expect("Select the profile that you want to update/create")?;
     // Find "Custom profile option"
     terminal.key_down()?;
     terminal.key_down()?;
     terminal.key_enter()?;
     // Enter profile name
-    terminal.line("custom")?;
+    terminal.line("custom1")?;
+    // Customize template
+    terminal.key_enter()?;
+    // Confirm diff
     terminal.line("y")?;
-    terminal.expect("Template FastCompile applied to profile custom")?;
+    terminal.expect("Template FastCompile applied to profile custom1")?;
     terminal.wait()?;
 
     insta::assert_snapshot!(project.read_manifest(), @r###"
@@ -105,7 +125,7 @@ fn dialog_fast_compile_custom_profile() -> anyhow::Result<()> {
     version = "0.1.0"
     edition = "2021"
 
-    [profile.custom]
+    [profile.custom1]
     inherits = "dev"
     debug = 0
     "###);
@@ -168,11 +188,28 @@ rustflags = ["-Ctarget-cpu=native"]
 }
 
 fn apply_fast_runtime_to_release(project: &CargoProject) -> anyhow::Result<()> {
+    apply_profile(project, 1, 1)
+}
+
+fn apply_profile(
+    project: &CargoProject,
+    template_index: u64,
+    profile_index: u64,
+) -> anyhow::Result<()> {
     let mut terminal = project.cmd(&[]).start_terminal()?;
-    terminal.key_down()?;
+    // Select template
+    for _ in 0..template_index {
+        terminal.key_down()?;
+    }
     terminal.key_enter()?;
-    terminal.key_down()?;
+    // Select profile
+    for _ in 0..profile_index {
+        terminal.key_down()?;
+    }
     terminal.key_enter()?;
+    // Customize template
+    terminal.key_enter()?;
+    // Confirm diff
     terminal.line("y")?;
     terminal.wait()?;
 

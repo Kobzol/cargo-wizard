@@ -83,8 +83,8 @@ fn main() -> anyhow::Result<()> {
                     };
                     let workspace = parse_workspace(&manifest_path)?;
                     let template = args.template.build_template();
-                    let manifest = workspace.apply_template(&args.profile, template)?;
-                    manifest.write()?;
+                    let modified = workspace.apply_template(&args.profile, template)?;
+                    modified.write()?;
                 }
                 None => {
                     if let Err(error) = run_root_dialog(cli_config) {

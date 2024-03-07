@@ -4,73 +4,59 @@ use console::{style, Style};
 use inquire::Confirm;
 use similar::ChangeTag;
 
-use cargo_wizard::{CargoWorkspace, Template};
+use cargo_wizard::{CargoWorkspace, ModificationResult, ModifiedWorkspace, Template};
 
 use crate::cli::CliConfig;
 use crate::dialog::utils::{clear_line, create_render_config, file_style};
 use crate::dialog::PromptResult;
 
 pub enum ConfirmDiffPromptResponse {
-    Accepted(CargoWorkspace),
+    Accepted(ModifiedWorkspace),
     Denied,
     NoDiff,
 }
 
 pub fn prompt_confirm_diff(
     cli_config: &CliConfig,
-    mut workspace: CargoWorkspace,
+    workspace: CargoWorkspace,
     profile: &str,
     template: Template,
 ) -> PromptResult<ConfirmDiffPromptResponse> {
-    // Cargo.toml
-    let orig_manifest_text = workspace.manifest.get_text();
-    workspace.manifest = workspace.manifest.apply_template(profile, &template)?;
-    let new_manifest_text = workspace.manifest.get_text();
+    let modified = workspace.apply_template(profile, template)?;
 
-    let manifest_diff = render_diff(&orig_manifest_text, &new_manifest_text);
-    let manifest_changed = !manifest_diff.trim().is_empty();
-    if manifest_changed {
+    // Cargo.toml
+    let manifest_diff = match &modified.manifest {
+        ModificationResult::NoChange => None,
+        ModificationResult::Modified { old, new } => {
+            Some(render_diff(&old.get_text(), &new.get_text()))
+        }
+    };
+    let manifest_changed = manifest_diff.is_some();
+    if let Some(diff) = manifest_diff {
         clear_line();
         println!("{}", file_style().apply_to("Cargo.toml"));
-        println!("{manifest_diff}");
+        println!("{diff}");
     }
 
     // .cargo/config.toml
-    // let config_diff = if let Some(config_template) = template.config {
-    //     let config = workspace
-    //         .config
-    //         .unwrap_or_else(|| CargoConfig::empty_from_manifest(&workspace.manifest.get_path()));
-    //
-    //     let old_config_text = config.get_text();
-    //     let new_config = config
-    //         .apply_template(config_template)
-    //         .context("Cannot apply config.toml template")?;
-    //     let new_manifest_text = new_config.get_text();
-    //     let config_diff = render_diff(&old_config_text, &new_manifest_text);
-    //
-    //     workspace.config = Some(new_config);
-    //     if config_diff.trim().is_empty() {
-    //         None
-    //     } else {
-    //         Some(config_diff)
-    //     }
-    // } else {
-    //     None
-    // };
-    // let config_changed = config_diff.is_some();
-    // if let Some(config_diff) = config_diff {
-    //     clear_line();
-    //     println!("{}", file_style().apply_to(".cargo/config.toml"));
-    //     println!("{config_diff}");
-    // }
+    let config_diff = match &modified.config {
+        ModificationResult::NoChange => None,
+        ModificationResult::Modified { old, new } => {
+            Some(render_diff(&old.get_text(), &new.get_text()))
+        }
+    };
+    let config_changed = config_diff.is_some();
+    if let Some(diff) = config_diff {
+        clear_line();
+        println!("{}", file_style().apply_to(".cargo/config.toml"));
+        println!("{diff}");
+    }
 
-    if !manifest_changed {
-        //} && !config_changed {
+    if !manifest_changed && !config_changed {
         return Ok(ConfirmDiffPromptResponse::NoDiff);
     }
 
-    let multiple_diffs = manifest_changed; // && config_changed;
-
+    let multiple_diffs = manifest_changed && config_changed;
     let answer = Confirm::new(&format!(
         "Do you want to apply the above diff{}?",
         if multiple_diffs { "s" } else { "" }
@@ -80,7 +66,7 @@ pub fn prompt_confirm_diff(
     .prompt()?;
 
     Ok(match answer {
-        true => ConfirmDiffPromptResponse::Accepted(workspace),
+        true => ConfirmDiffPromptResponse::Accepted(modified),
         false => ConfirmDiffPromptResponse::Denied,
     })
 }

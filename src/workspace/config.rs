@@ -31,23 +31,11 @@ impl CargoConfig {
         })
     }
 
-    pub fn is_same_as(&self, other: &CargoConfig) -> bool {
-        self.get_text() == other.get_text()
-    }
-
     pub fn get_text(&self) -> String {
         self.document.to_string()
     }
 
     pub fn apply_template(mut self, template: &Template) -> anyhow::Result<Self> {
-        let build = self
-            .document
-            .entry("build")
-            .or_insert(table())
-            .as_table_mut()
-            .ok_or_else(|| anyhow::anyhow!("The build item in config.toml is not a table"))?;
-        let flags = build.entry("rustflags").or_insert(value(Array::new()));
-
         let rustflags: Vec<String> = template
             .items
             .iter()
@@ -63,6 +51,17 @@ impl CargoConfig {
                 }
             })
             .collect();
+        if rustflags.is_empty() {
+            return Ok(self);
+        }
+
+        let build = self
+            .document
+            .entry("build")
+            .or_insert(table())
+            .as_table_mut()
+            .ok_or_else(|| anyhow::anyhow!("The build item in config.toml is not a table"))?;
+        let flags = build.entry("rustflags").or_insert(value(Array::new()));
 
         // build.rustflags can be either a string or an array of strings
         if let Some(array) = flags.as_array_mut() {

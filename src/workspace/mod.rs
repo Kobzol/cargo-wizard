@@ -10,44 +10,73 @@ use crate::workspace::config::{config_path_from_manifest_path, CargoConfig};
 pub mod config;
 pub mod manifest;
 
+#[derive(Clone)]
 pub struct CargoWorkspace {
     pub manifest: CargoManifest,
-    /// None means that the config was not found on disk
-    /// If it is also None during [`CargoWorkspace::write`], then no config
-    /// will be written to disk.
-    pub config: Option<CargoConfig>,
+    pub config: CargoConfig,
 }
 
 impl CargoWorkspace {
-    pub fn apply_template(mut self, profile: &str, template: Template) -> anyhow::Result<Self> {
-        self.manifest = self.manifest.apply_template(profile, &template)?;
-
-        let original_config = self
-            .config
-            .unwrap_or_else(|| CargoConfig::empty_from_manifest(&self.manifest.get_path()));
-
-        let orig_config = original_config.clone();
-        let modified_config = original_config.apply_template(&template)?;
-        if orig_config.is_same_as(&modified_config) {
-            self.config = None;
+    pub fn apply_template(
+        self,
+        profile: &str,
+        template: Template,
+    ) -> anyhow::Result<ModifiedWorkspace> {
+        let old_manifest = self.manifest.clone();
+        let new_manifest = self.manifest.apply_template(profile, &template)?;
+        let manifest = if old_manifest.get_text() == new_manifest.get_text() {
+            ModificationResult::NoChange
         } else {
-            self.config = Some(modified_config);
-        }
+            ModificationResult::Modified {
+                old: old_manifest,
+                new: new_manifest,
+            }
+        };
 
-        Ok(self)
+        let old_config = self.config.clone();
+        let new_config = self.config.apply_template(&template)?;
+        let config = if old_config.get_text() == new_config.get_text() {
+            ModificationResult::NoChange
+        } else {
+            ModificationResult::Modified {
+                old: old_config,
+                new: new_config,
+            }
+        };
+        Ok(ModifiedWorkspace { manifest, config })
     }
 
     pub fn existing_profiles(&self) -> Vec<String> {
         self.manifest.get_profiles()
     }
+}
 
+pub struct ModifiedWorkspace {
+    pub manifest: ModificationResult<CargoManifest>,
+    pub config: ModificationResult<CargoConfig>,
+}
+
+impl ModifiedWorkspace {
     pub fn write(self) -> anyhow::Result<()> {
-        self.manifest.write()?;
-        if let Some(config) = self.config {
-            config.write()?;
+        match self.manifest {
+            ModificationResult::NoChange => {}
+            ModificationResult::Modified { new, .. } => {
+                new.write()?;
+            }
+        }
+        match self.config {
+            ModificationResult::NoChange => {}
+            ModificationResult::Modified { new, .. } => {
+                new.write()?;
+            }
         }
         Ok(())
     }
+}
+
+pub enum ModificationResult<T> {
+    NoChange,
+    Modified { old: T, new: T },
 }
 
 /// Parses a Cargo workspace from a Cargo.toml manifest path.
@@ -57,7 +86,8 @@ pub fn parse_workspace(manifest_path: &Path) -> anyhow::Result<CargoWorkspace> {
         .filter(|p| p.exists())
         .map(|path| CargoConfig::from_path(&path))
         .transpose()
-        .with_context(|| "Cannot load config.toml")?;
+        .with_context(|| "Cannot load config.toml")?
+        .unwrap_or_else(|| CargoConfig::empty_from_manifest(manifest_path));
 
     Ok(CargoWorkspace { manifest, config })
 }
