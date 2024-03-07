@@ -31,20 +31,6 @@ pub struct TemplateItemMedata {
 }
 
 impl TemplateItemMedata {
-    fn new(values: &[PossibleValue]) -> Self {
-        Self {
-            values: values.to_vec(),
-            custom_value: None,
-        }
-    }
-
-    fn new_with_custom(values: &[PossibleValue], custom_value: TomlValueKind) -> Self {
-        Self {
-            values: values.to_vec(),
-            custom_value: Some(custom_value),
-        }
-    }
-
     pub fn get_selected_value(&self, value: TomlValue) -> SelectedPossibleValue {
         if let Some(index) = self.values.iter().position(|v| v.value == value) {
             return SelectedPossibleValue::Constant { value, index };
@@ -65,6 +51,47 @@ impl TemplateItemMedata {
     }
 }
 
+#[derive(Default)]
+struct MetadataBuilder {
+    values: Vec<PossibleValue>,
+    custom_value: Option<TomlValueKind>,
+}
+
+impl MetadataBuilder {
+    fn build(self) -> TemplateItemMedata {
+        let MetadataBuilder {
+            values,
+            custom_value,
+        } = self;
+        TemplateItemMedata {
+            values,
+            custom_value,
+        }
+    }
+
+    fn value(mut self, description: &'static str, value: TomlValue) -> Self {
+        self.values.push(PossibleValue::new(description, value));
+        self
+    }
+
+    fn int(self, description: &'static str, value: i64) -> Self {
+        self.value(description, TomlValue::Int(value))
+    }
+
+    fn bool(self, description: &'static str, value: bool) -> Self {
+        self.value(description, TomlValue::Bool(value))
+    }
+
+    fn string(self, description: &'static str, value: &str) -> Self {
+        self.value(description, TomlValue::String(value.to_string()))
+    }
+
+    fn custom_value(mut self, kind: TomlValueKind) -> Self {
+        self.custom_value = Some(kind);
+        self
+    }
+}
+
 impl KnownCargoOptions {
     pub fn get_all_ids() -> Vec<TemplateItemId> {
         vec![
@@ -80,63 +107,45 @@ impl KnownCargoOptions {
 
     pub fn get_metadata(id: TemplateItemId) -> TemplateItemMedata {
         match id {
-            TemplateItemId::OptimizationLevel => TemplateItemMedata::new(&[
-                PossibleValue::new("No optimizations", TomlValue::Int(0)),
-                PossibleValue::new("Basic optimizations", TomlValue::Int(1)),
-                PossibleValue::new("Some optimizations", TomlValue::Int(2)),
-                PossibleValue::new("All optimizations", TomlValue::Int(3)),
-                PossibleValue::new(
-                    "Optimize for small size",
-                    TomlValue::String("s".to_string()),
-                ),
-                PossibleValue::new(
-                    "Optimize for even smaller size",
-                    TomlValue::String("z".to_string()),
-                ),
-            ]),
-            TemplateItemId::Lto => TemplateItemMedata::new(&[
-                PossibleValue::new("Disable LTO", TomlValue::String("off".to_string())),
-                PossibleValue::new("Thin local LTO (default)", TomlValue::Bool(false)),
-                PossibleValue::new("Thin LTO", TomlValue::String("thin".to_string())),
-                PossibleValue::new("Fat LTO", TomlValue::Bool(true)),
-            ]),
-            TemplateItemId::CodegenUnits => TemplateItemMedata::new_with_custom(
-                &[PossibleValue::new("1 CGU", TomlValue::Int(1))],
-                TomlValueKind::Int,
-            ),
-            TemplateItemId::Panic => TemplateItemMedata::new(&[
-                PossibleValue::new("Unwind", TomlValue::String("unwind".to_string())),
-                PossibleValue::new("Abort", TomlValue::String("abort".to_string())),
-            ]),
-            TemplateItemId::DebugInfo => TemplateItemMedata::new(&[
-                PossibleValue::new("Disable debuginfo", TomlValue::Bool(false)),
-                PossibleValue::new(
-                    "Enable line directives",
-                    TomlValue::String("line-directives-only".to_string()),
-                ),
-                PossibleValue::new(
-                    "Enable line tables",
-                    TomlValue::String("line-tables-only".to_string()),
-                ),
-                PossibleValue::new("Limited debuginfo", TomlValue::Int(1)),
-                PossibleValue::new("Full debuginfo", TomlValue::Bool(true)),
-            ]),
-            TemplateItemId::Strip => TemplateItemMedata::new(&[
-                PossibleValue::new("Do not strip anything", TomlValue::Bool(false)),
-                PossibleValue::new(
-                    "Strip debug info",
-                    TomlValue::String("debuginfo".to_string()),
-                ),
-                PossibleValue::new("Strip symbols", TomlValue::String("symbols".to_string())),
-                PossibleValue::new("Strip debug info and symbols", TomlValue::Bool(true)),
-            ]),
-            TemplateItemId::TargetCpuInstructionSet => TemplateItemMedata::new_with_custom(
-                &[PossibleValue::new(
-                    "Native (best for the local CPU)",
-                    TomlValue::string("native"),
-                )],
-                TomlValueKind::String,
-            ),
+            TemplateItemId::OptimizationLevel => MetadataBuilder::default()
+                .int("No optimizations", 0)
+                .int("Basic optimizations", 1)
+                .int("Some optimizations", 2)
+                .int("All optimizations", 3)
+                .string("Optimize for small size", "s")
+                .string("Optimize for even smaller size", "z")
+                .build(),
+            TemplateItemId::Lto => MetadataBuilder::default()
+                .string("Disable LTO", "off")
+                .bool("Thin local LTO", false)
+                .string("Thin LTO", "thin")
+                .bool("Fat LTO", true)
+                .build(),
+            TemplateItemId::CodegenUnits => MetadataBuilder::default()
+                .int("1 CGU", 1)
+                .custom_value(TomlValueKind::Int)
+                .build(),
+            TemplateItemId::Panic => MetadataBuilder::default()
+                .string("Unwind", "unwind")
+                .string("Abort", "abort")
+                .build(),
+            TemplateItemId::DebugInfo => MetadataBuilder::default()
+                .bool("Disable debuginfo", false)
+                .string("Enable line directives", "line-directives-only")
+                .string("Enable line tables", "line-tables-only")
+                .int("Limited debuginfo", 1)
+                .bool("Full debuginfo", true)
+                .build(),
+            TemplateItemId::Strip => MetadataBuilder::default()
+                .bool("Do not strip anything", false)
+                .string("Strip debug info", "debuginfo")
+                .string("Strip symbols", "symbols")
+                .bool("Strip debug info and symbols", true)
+                .build(),
+            TemplateItemId::TargetCpuInstructionSet => MetadataBuilder::default()
+                .string("Native (best for the local CPU)", "native")
+                .custom_value(TomlValueKind::String)
+                .build(),
         }
     }
 }
