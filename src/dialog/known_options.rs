@@ -6,17 +6,50 @@ pub struct KnownCargoOptions;
 impl KnownCargoOptions {
     pub fn get_profile_ids() -> Vec<ProfileItemId> {
         vec![
-            ProfileItemId::DebugInfo,
-            ProfileItemId::Strip,
+            ProfileItemId::OptimizationLevel,
             ProfileItemId::Lto,
             ProfileItemId::CodegenUnits,
             ProfileItemId::Panic,
-            ProfileItemId::OptimizationLevel,
+            ProfileItemId::DebugInfo,
+            ProfileItemId::Strip,
         ]
     }
 
     pub fn get_profile_possible_values(id: ProfileItemId) -> Vec<PossibleValue> {
         match id {
+            ProfileItemId::OptimizationLevel => {
+                vec![
+                    PossibleValue::new("No optimizations", TomlValue::Int(0)),
+                    PossibleValue::new("Basic optimizations", TomlValue::Int(1)),
+                    PossibleValue::new("Some optimizations", TomlValue::Int(2)),
+                    PossibleValue::new("All optimizations", TomlValue::Int(3)),
+                    PossibleValue::new(
+                        "Optimize for small size",
+                        TomlValue::String("s".to_string()),
+                    ),
+                    PossibleValue::new(
+                        "Optimize for even smaller size",
+                        TomlValue::String("z".to_string()),
+                    ),
+                ]
+            }
+            ProfileItemId::Lto => {
+                vec![
+                    PossibleValue::new("Disable LTO", TomlValue::String("off".to_string())),
+                    PossibleValue::new("Thin local LTO (default)", TomlValue::Bool(false)),
+                    PossibleValue::new("Thin LTO", TomlValue::String("thin".to_string())),
+                    PossibleValue::new("Fat LTO", TomlValue::Bool(true)),
+                ]
+            }
+            ProfileItemId::CodegenUnits => {
+                vec![PossibleValue::new("1 CGU", TomlValue::Int(1))]
+            }
+            ProfileItemId::Panic => {
+                vec![
+                    PossibleValue::new("Unwind", TomlValue::String("unwind".to_string())),
+                    PossibleValue::new("Abort", TomlValue::String("abort".to_string())),
+                ]
+            }
             ProfileItemId::DebugInfo => vec![
                 PossibleValue::new("Disable debuginfo", TomlValue::Bool(false)),
                 PossibleValue::new(
@@ -39,39 +72,6 @@ impl KnownCargoOptions {
                 PossibleValue::new("Strip symbols", TomlValue::String("symbols".to_string())),
                 PossibleValue::new("Strip debug info and symbols", TomlValue::Bool(true)),
             ],
-            ProfileItemId::Lto => {
-                vec![
-                    PossibleValue::new("Disable LTO", TomlValue::String("off".to_string())),
-                    PossibleValue::new("Thin local LTO (default)", TomlValue::Bool(false)),
-                    PossibleValue::new("Thin LTO", TomlValue::String("thin".to_string())),
-                    PossibleValue::new("Fat LTO", TomlValue::Bool(true)),
-                ]
-            }
-            ProfileItemId::CodegenUnits => {
-                vec![PossibleValue::new("1 CGU", TomlValue::Int(1))]
-            }
-            ProfileItemId::Panic => {
-                vec![
-                    PossibleValue::new("Unwind", TomlValue::String("unwind".to_string())),
-                    PossibleValue::new("Abort", TomlValue::String("abort".to_string())),
-                ]
-            }
-            ProfileItemId::OptimizationLevel => {
-                vec![
-                    PossibleValue::new("No optimizations", TomlValue::Int(0)),
-                    PossibleValue::new("Basic optimizations", TomlValue::Int(1)),
-                    PossibleValue::new("Some optimizations", TomlValue::Int(2)),
-                    PossibleValue::new("All optimizations", TomlValue::Int(3)),
-                    PossibleValue::new(
-                        "Optimize for small size",
-                        TomlValue::String("s".to_string()),
-                    ),
-                    PossibleValue::new(
-                        "Optimize for even smaller size",
-                        TomlValue::String("z".to_string()),
-                    ),
-                ]
-            }
         }
     }
     // config: vec![CargoOption {
