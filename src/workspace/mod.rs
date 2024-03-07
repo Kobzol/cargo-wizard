@@ -12,15 +12,26 @@ pub mod manifest;
 
 pub struct CargoWorkspace {
     pub manifest: CargoManifest,
+    /// None means that the config was not found on disk
+    /// If it is also None during [`CargoWorkspace::write`], then no config
+    /// will be written to disk.
     pub config: Option<CargoConfig>,
 }
 
 impl CargoWorkspace {
     pub fn apply_template(mut self, profile: &str, template: Template) -> anyhow::Result<Self> {
         self.manifest = self.manifest.apply_template(profile, &template)?;
-        todo!();
-        if let Some(config) = self.config {
-            self.config = Some(config.apply_template(&template)?);
+
+        let original_config = self
+            .config
+            .unwrap_or_else(|| CargoConfig::empty_from_manifest(&self.manifest.get_path()));
+
+        let orig_config = original_config.clone();
+        let modified_config = original_config.apply_template(&template)?;
+        if orig_config.is_same_as(&modified_config) {
+            self.config = None;
+        } else {
+            self.config = Some(modified_config);
         }
 
         Ok(self)

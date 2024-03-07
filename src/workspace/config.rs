@@ -5,7 +5,7 @@ use crate::{Template, TemplateItemId, TomlValue};
 use anyhow::Context;
 use toml_edit::{table, value, Array, Document, Formatted, Value};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CargoConfig {
     path: PathBuf,
     document: Document,
@@ -29,6 +29,10 @@ impl CargoConfig {
             document,
             path: path.to_path_buf(),
         })
+    }
+
+    pub fn is_same_as(&self, other: &CargoConfig) -> bool {
+        self.get_text() == other.get_text()
     }
 
     pub fn get_text(&self) -> String {
