@@ -20,14 +20,26 @@ pub fn prompt_customize_template(
                 break;
             }
             ChooseEntryResponse::Modify(id) => {
-                if let Some(value) = prompt_select_item_value(cli_config, &template, id)? {
-                    match id {
-                        ItemId::Profile(id) => {
-                            template.profile.items.insert(id, value);
-                        } // ItemId::Config(_id) => {
-                          //     todo!();
-                          // }
+                match prompt_select_item_value(cli_config, &template, id)? {
+                    SelectItemValueResponse::Set(value) => {
+                        match id {
+                            ItemId::Profile(id) => {
+                                template.profile.items.insert(id, value);
+                            } // ItemId::Config(_id) => {
+                              //     todo!();
+                              // }
+                        }
                     }
+                    SelectItemValueResponse::Unset => {
+                        match id {
+                            ItemId::Profile(id) => {
+                                template.profile.items.shift_remove(&id);
+                            } // ItemId::Config(_id) => {
+                              //     todo!();
+                              // }
+                        }
+                    }
+                    SelectItemValueResponse::Cancel => {}
                 }
             }
         }
@@ -57,7 +69,7 @@ fn prompt_choose_entry(
             match self {
                 Row::Confirm => f.write_str("<Confirm>"),
                 Row::Profile { id, template } => {
-                    write!(f, "{:<24}", ItemId::Profile(*id).to_string())?;
+                    write!(f, "{:<30}", ItemId::Profile(*id).to_string())?;
 
                     if let Some(value) = template.profile.items.get(id) {
                         let val = format!("[{}]", TOMLValueFormatter(&value));
@@ -131,13 +143,20 @@ impl<'a> Display for TOMLValueFormatter<'a> {
     }
 }
 
+enum SelectItemValueResponse {
+    Set(TomlValue),
+    Unset,
+    Cancel,
+}
+
 fn prompt_select_item_value(
     cli_config: &CliConfig,
     template: &Template,
     item_id: ItemId,
-) -> PromptResult<Option<TomlValue>> {
+) -> PromptResult<SelectItemValueResponse> {
     enum Row {
         Value(PossibleValue),
+        Unset,
         Cancel,
     }
     impl Display for Row {
@@ -149,6 +168,7 @@ fn prompt_select_item_value(
                     value.value().to_toml_value().to_string(),
                     value.description()
                 ),
+                Row::Unset => f.write_str("<Unset value>"),
                 Row::Cancel => f.write_str("<Go back>"),
             }
         }
@@ -159,6 +179,7 @@ fn prompt_select_item_value(
         .into_iter()
         .map(Row::Value)
         .collect();
+    rows.push(Row::Unset);
     rows.push(Row::Cancel);
 
     let existing_value = match item_id {
@@ -186,10 +207,11 @@ fn prompt_select_item_value(
 
     let result = match selected {
         Some(selected) => match selected {
-            Row::Value(value) => Some(value.value().clone()),
-            Row::Cancel => None,
+            Row::Value(value) => SelectItemValueResponse::Set(value.value().clone()),
+            Row::Unset => SelectItemValueResponse::Unset,
+            Row::Cancel => SelectItemValueResponse::Cancel,
         },
-        None => None,
+        None => SelectItemValueResponse::Cancel,
     };
 
     Ok(result)

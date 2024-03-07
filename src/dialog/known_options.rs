@@ -19,7 +19,16 @@ impl KnownCargoOptions {
         match id {
             ProfileItemId::DebugInfo => vec![
                 PossibleValue::new("Disable debuginfo", TomlValue::Bool(false)),
-                PossibleValue::new("Enable debuginfo", TomlValue::Bool(true)),
+                PossibleValue::new(
+                    "Enable line directives",
+                    TomlValue::String("line-directives-only".to_string()),
+                ),
+                PossibleValue::new(
+                    "Enable line tables",
+                    TomlValue::String("line-tables-only".to_string()),
+                ),
+                PossibleValue::new("Limited debuginfo", TomlValue::Int(1)),
+                PossibleValue::new("Full debuginfo", TomlValue::Bool(true)),
             ],
             ProfileItemId::Strip => vec![
                 PossibleValue::new("Do not strip anything", TomlValue::Bool(false)),
@@ -32,7 +41,8 @@ impl KnownCargoOptions {
             ],
             ProfileItemId::Lto => {
                 vec![
-                    PossibleValue::new("No LTO", TomlValue::Bool(false)),
+                    PossibleValue::new("Disable LTO", TomlValue::String("off".to_string())),
+                    PossibleValue::new("Thin local LTO (default)", TomlValue::Bool(false)),
                     PossibleValue::new("Thin LTO", TomlValue::String("thin".to_string())),
                     PossibleValue::new("Fat LTO", TomlValue::Bool(true)),
                 ]
@@ -49,10 +59,15 @@ impl KnownCargoOptions {
             ProfileItemId::OptimizationLevel => {
                 vec![
                     PossibleValue::new("No optimizations", TomlValue::Int(0)),
-                    PossibleValue::new("Some optimizations", TomlValue::Int(1)),
-                    PossibleValue::new("Full optimizations", TomlValue::Int(2)),
+                    PossibleValue::new("Basic optimizations", TomlValue::Int(1)),
+                    PossibleValue::new("Some optimizations", TomlValue::Int(2)),
+                    PossibleValue::new("All optimizations", TomlValue::Int(3)),
                     PossibleValue::new(
                         "Optimize for small size",
+                        TomlValue::String("s".to_string()),
+                    ),
+                    PossibleValue::new(
+                        "Optimize for even smaller size",
                         TomlValue::String("z".to_string()),
                     ),
                 ]
