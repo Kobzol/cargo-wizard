@@ -1,11 +1,16 @@
 use std::fmt::{Display, Formatter};
+use std::str;
+use std::str::FromStr;
 
-use inquire::Select;
+use inquire::validator::{ErrorMessage, Validation};
+use inquire::{CustomType, Select};
 
 use cargo_wizard::{ProfileItemId, Template, TomlValue};
 
 use crate::cli::CliConfig;
-use crate::dialog::known_options::{KnownCargoOptions, PossibleValue};
+use crate::dialog::known_options::{
+    KnownCargoOptions, PossibleValue, PossibleValueSet, SelectedPossibleValue, TomlValueKind,
+};
 use crate::dialog::utils::create_render_config;
 use crate::dialog::PromptResult;
 
@@ -15,11 +20,11 @@ pub fn prompt_customize_template(
     mut template: Template,
 ) -> PromptResult<Template> {
     loop {
-        match prompt_choose_entry(cli_config, &template)? {
-            ChooseEntryResponse::Confirm => {
+        match prompt_choose_item_or_confirm_template(cli_config, &template)? {
+            ChooseItemResponse::ConfirmTemplate => {
                 break;
             }
-            ChooseEntryResponse::Modify(id) => {
+            ChooseItemResponse::ModifyItem(id) => {
                 match prompt_select_item_value(cli_config, &template, id)? {
                     SelectItemValueResponse::Set(value) => {
                         match id {
@@ -47,15 +52,17 @@ pub fn prompt_customize_template(
     Ok(template)
 }
 
-enum ChooseEntryResponse {
-    Confirm,
-    Modify(ItemId),
+enum ChooseItemResponse {
+    ConfirmTemplate,
+    ModifyItem(ItemId),
 }
 
-fn prompt_choose_entry(
+/// Choose a profile/config item that should be modified,
+/// or confirm the template.
+fn prompt_choose_item_or_confirm_template(
     cli_config: &CliConfig,
     template: &Template,
-) -> PromptResult<ChooseEntryResponse> {
+) -> PromptResult<ChooseItemResponse> {
     enum Row<'a> {
         Confirm,
         Profile {
@@ -72,7 +79,7 @@ fn prompt_choose_entry(
                     write!(f, "{:<30}", ItemId::Profile(*id).to_string())?;
 
                     if let Some(value) = template.profile.items.get(id) {
-                        let val = format!("[{}]", TOMLValueFormatter(&value));
+                        let val = format!("[{}]", TomlValueDisplay(&value));
                         write!(f, "{val:>10}")
                     } else {
                         f.write_str("         -")
@@ -84,7 +91,7 @@ fn prompt_choose_entry(
 
     let rows = std::iter::once(Row::Confirm)
         .chain(
-            KnownCargoOptions::get_profile_ids()
+            KnownCargoOptions::profile_ids()
                 .iter()
                 .map(|&id| Row::Profile { id, template }),
         )
@@ -93,8 +100,8 @@ fn prompt_choose_entry(
         .with_render_config(create_render_config(cli_config))
         .prompt()?;
     Ok(match answer {
-        Row::Confirm => ChooseEntryResponse::Confirm,
-        Row::Profile { id, .. } => ChooseEntryResponse::Modify(ItemId::Profile(id)),
+        Row::Confirm => ChooseItemResponse::ConfirmTemplate,
+        Row::Profile { id, .. } => ChooseItemResponse::ModifyItem(ItemId::Profile(id)),
     })
 }
 
@@ -105,9 +112,15 @@ enum ItemId {
 }
 
 impl ItemId {
-    fn possible_values(&self) -> Vec<PossibleValue> {
+    fn value_set(&self) -> PossibleValueSet {
         match self {
-            ItemId::Profile(id) => KnownCargoOptions::get_profile_possible_values(*id),
+            ItemId::Profile(id) => KnownCargoOptions::profile_item_values(*id),
+        }
+    }
+
+    fn selected_value(&self, template: &Template) -> Option<TomlValue> {
+        match self {
+            ItemId::Profile(id) => template.profile.items.get(id).cloned(),
         }
     }
 }
@@ -131,14 +144,24 @@ impl Display for ItemId {
     }
 }
 
-struct TOMLValueFormatter<'a>(&'a TomlValue);
+struct TomlValueDisplay<'a>(&'a TomlValue);
 
-impl<'a> Display for TOMLValueFormatter<'a> {
+impl<'a> Display for TomlValueDisplay<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self.0 {
             TomlValue::Int(value) => value.fmt(f),
             TomlValue::Bool(value) => value.fmt(f),
             TomlValue::String(value) => value.fmt(f),
+        }
+    }
+}
+
+struct ValueKindDisplay(TomlValueKind);
+
+impl Display for ValueKindDisplay {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            TomlValueKind::Int => f.write_str("int"),
         }
     }
 }
@@ -149,55 +172,87 @@ enum SelectItemValueResponse {
     Cancel,
 }
 
+/// Select a value for a specific profile or config item.
+/// This function is passed a template so that it knows if any existing value
+/// is already selected.
 fn prompt_select_item_value(
     cli_config: &CliConfig,
     template: &Template,
     item_id: ItemId,
 ) -> PromptResult<SelectItemValueResponse> {
-    enum Row {
-        Value(PossibleValue),
+    enum Row<'a> {
+        ConstantValue(PossibleValue),
+        CustomValue {
+            kind: TomlValueKind,
+            selected_value: &'a SelectedPossibleValue,
+        },
         Unset,
         Cancel,
     }
-    impl Display for Row {
+    impl<'a> Display for Row<'a> {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             match self {
-                Row::Value(value) => write!(
+                Row::ConstantValue(value) => write!(
                     f,
-                    "{}: {}",
+                    "{:<24} {}",
+                    value.description(),
                     value.value().to_toml_value().to_string(),
-                    value.description()
                 ),
+                Row::CustomValue {
+                    kind,
+                    selected_value,
+                } => {
+                    write!(f, "{:<24}", "Custom value")?;
+                    match selected_value {
+                        SelectedPossibleValue::Custom { value } => {
+                            write!(f, " {}", TomlValueDisplay(value))
+                        }
+                        _ => match kind {
+                            TomlValueKind::Int => write!(f, "({})", ValueKindDisplay(*kind)),
+                        },
+                    }
+                }
                 Row::Unset => f.write_str("<Unset value>"),
                 Row::Cancel => f.write_str("<Go back>"),
             }
         }
     }
 
-    let mut rows: Vec<_> = item_id
-        .possible_values()
+    let value_set = item_id.value_set();
+    let selected_value = item_id.selected_value(template);
+    let selected_value = selected_value
+        .clone()
+        .map(|v| value_set.get_selected_value(v))
+        .unwrap_or(SelectedPossibleValue::None);
+
+    let mut rows: Vec<_> = value_set
+        .get_possible_values()
         .into_iter()
-        .map(Row::Value)
+        .cloned()
+        .map(Row::ConstantValue)
         .collect();
+    if let Some(kind) = value_set.get_custom_value_kind() {
+        rows.push(Row::CustomValue {
+            kind,
+            selected_value: &selected_value,
+        });
+    }
+
     rows.push(Row::Unset);
     rows.push(Row::Cancel);
 
-    let existing_value = match item_id {
-        ItemId::Profile(id) => template.profile.items.get(&id),
-        // ItemId::Config(_id) => {
-        //     todo!()
-        // template..items.get(&entry.label)
-        // }
+    let mut default_index = value_set.get_possible_values().len();
+    if value_set.get_custom_value_kind().is_some() {
+        default_index += 1;
+    }
+
+    let index = match selected_value {
+        SelectedPossibleValue::Constant { index, .. } => index,
+        // Select "Custom value" as a default if a custom value is selected
+        SelectedPossibleValue::Custom { .. } => value_set.get_possible_values().len(),
+        // Select "Go back" as a default if no value is selected
+        SelectedPossibleValue::None => default_index,
     };
-    // Select "Go back" as a default if no value is selected
-    let index = existing_value
-        .and_then(|value| {
-            item_id
-                .possible_values()
-                .iter()
-                .position(|v| v.value() == value)
-        })
-        .unwrap_or(item_id.possible_values().len());
 
     let selected = Select::new(&format!("Select value for `{}`:", item_id), rows)
         .with_starting_cursor(index)
@@ -207,7 +262,11 @@ fn prompt_select_item_value(
 
     let result = match selected {
         Some(selected) => match selected {
-            Row::Value(value) => SelectItemValueResponse::Set(value.value().clone()),
+            Row::ConstantValue(value) => SelectItemValueResponse::Set(value.value().clone()),
+            Row::CustomValue { kind, .. } => {
+                let value = prompt_enter_custom_value(cli_config, kind)?;
+                SelectItemValueResponse::Set(value)
+            }
             Row::Unset => SelectItemValueResponse::Unset,
             Row::Cancel => SelectItemValueResponse::Cancel,
         },
@@ -215,4 +274,58 @@ fn prompt_select_item_value(
     };
 
     Ok(result)
+}
+
+/// Enter a custom TOML value of the given kind.
+fn prompt_enter_custom_value(
+    cli_config: &CliConfig,
+    kind: TomlValueKind,
+) -> PromptResult<TomlValue> {
+    #[derive(Clone)]
+    struct Value(TomlValue);
+
+    impl Display for Value {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            TomlValueDisplay(&self.0).fmt(f)
+        }
+    }
+
+    impl FromStr for Value {
+        type Err = &'static str;
+
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            if s.is_empty() {
+                return Err("Value must not be empty");
+            }
+
+            if let Ok(value) = bool::from_str(s) {
+                Ok(Self(TomlValue::Bool(value)))
+            } else if let Ok(value) = i64::from_str(s) {
+                Ok(Self(TomlValue::Int(value)))
+            } else {
+                Ok(Self(TomlValue::String(String::from(s))))
+            }
+        }
+    }
+
+    let value = CustomType::<Value>::new(&format!(
+        "Enter custom value of type {}: ",
+        ValueKindDisplay(kind)
+    ))
+    .with_validator(move |val: &Value| match (kind, &val.0) {
+        (TomlValueKind::Int, TomlValue::Int(_)) => Ok(Validation::Valid),
+        (kind, value) => Ok(Validation::Invalid(ErrorMessage::Custom(format!(
+            "Invalid TOML type, expected `{}`, got {}",
+            ValueKindDisplay(kind),
+            match value {
+                TomlValue::Int(_) => "int",
+                TomlValue::Bool(_) => "bool",
+                TomlValue::String(_) => "string",
+            }
+        )))),
+    })
+    .with_render_config(create_render_config(cli_config))
+    .prompt()?;
+
+    Ok(value.0)
 }
