@@ -1,7 +1,6 @@
 use anyhow::Context;
 
-use cargo_wizard::PredefinedTemplateKind;
-use cargo_wizard::{parse_workspace, resolve_manifest_path};
+use cargo_wizard::{parse_workspace, resolve_manifest_path, PredefinedTemplateKind};
 pub use error::{DialogError, PromptResult};
 
 use crate::cli::CliConfig;

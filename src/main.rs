@@ -3,14 +3,13 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Parser;
 
-use cargo_wizard::PredefinedTemplateKind;
-use cargo_wizard::{parse_workspace, resolve_manifest_path};
+use cargo_wizard::{parse_workspace, resolve_manifest_path, PredefinedTemplateKind};
 
 use crate::cli::CliConfig;
-use crate::dialog::{run_root_dialog, DialogError};
+// use crate::dialog::{run_root_dialog, DialogError};
 
 mod cli;
-mod dialog;
+// mod dialog;
 
 #[derive(clap::Parser, Debug)]
 #[clap(author, version, about)]
@@ -84,24 +83,22 @@ fn main() -> anyhow::Result<()> {
                     };
                     let workspace = parse_workspace(&manifest_path)?;
                     let template = args.template.build_template();
-                    let manifest = workspace
-                        .manifest
-                        .apply_template(&args.profile, template.profile)?;
+                    let manifest = workspace.apply_template(template)?;
                     manifest.write()?;
                 }
                 None => {
-                    if let Err(error) = run_root_dialog(cli_config) {
-                        match error {
-                            DialogError::Interrupted => {
-                                // Print an empty line when the app is interrupted, to avoid
-                                // overwriting the last line.
-                                println!();
-                            }
-                            DialogError::Generic(error) => {
-                                panic!("{error:?}");
-                            }
-                        }
-                    }
+                    // if let Err(error) = run_root_dialog(cli_config) {
+                    //     match error {
+                    //         DialogError::Interrupted => {
+                    //             // Print an empty line when the app is interrupted, to avoid
+                    //             // overwriting the last line.
+                    //             println!();
+                    //         }
+                    //         DialogError::Generic(error) => {
+                    //             panic!("{error:?}");
+                    //         }
+                    //     }
+                    // }
                 }
             }
         }

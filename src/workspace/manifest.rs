@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
-use toml_edit::{Document, table, value};
+use toml_edit::{table, value, Document};
 
 use crate::toml::{TableItem, TomlTableTemplate};
 
@@ -18,7 +18,7 @@ pub fn resolve_manifest_path() -> anyhow::Result<PathBuf> {
     Ok(manifest_path)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum BuiltinProfile {
     Dev,
     Release,

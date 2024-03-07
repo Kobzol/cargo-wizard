@@ -2,9 +2,10 @@ use std::path::Path;
 
 use anyhow::Context;
 
+use crate::Template;
 use manifest::CargoManifest;
 
-use crate::workspace::config::{CargoConfig, config_path_from_manifest_path};
+use crate::workspace::config::{config_path_from_manifest_path, CargoConfig};
 
 pub mod config;
 pub mod manifest;
@@ -15,6 +16,10 @@ pub struct CargoWorkspace {
 }
 
 impl CargoWorkspace {
+    pub fn apply_template(self, template: Template) -> anyhow::Result<Self> {
+        Ok(self)
+    }
+
     pub fn write(self) -> anyhow::Result<()> {
         self.manifest.write()?;
         if let Some(config) = self.config {

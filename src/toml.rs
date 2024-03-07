@@ -35,7 +35,7 @@ pub struct TomlTableTemplate {
     pub items: Vec<TableItem>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TomlValue {
     Int(i64),
     Bool(bool),
