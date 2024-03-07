@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
-use toml_edit::{Array, Document, Formatted, table, value, Value};
+use toml_edit::{table, value, Array, Document, Formatted, Value};
 
 #[derive(Debug)]
 pub struct CargoConfig {
@@ -101,8 +101,8 @@ mod tests {
 
     use toml_edit::Document;
 
-    use crate::CargoConfig;
     use crate::workspace::config::ConfigTemplate;
+    use crate::CargoConfig;
 
     #[test]
     fn create_rustflags() {

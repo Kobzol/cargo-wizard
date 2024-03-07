@@ -1,11 +1,14 @@
+use std::fmt::{Display, Formatter};
+
+use inquire::Select;
+
+use cargo_wizard::{
+    CargoOption, KnownCargoOptions, PossibleValue, ProfileItemId, Template, TomlValue,
+};
+
 use crate::cli::CliConfig;
 use crate::dialog::utils::create_render_config;
 use crate::dialog::PromptResult;
-use cargo_wizard::{
-    CargoOption, ConfigItemId, KnownCargoOptions, PossibleValue, ProfileItemId, Template, TomlValue,
-};
-use inquire::Select;
-use std::fmt::{Display, Formatter};
 
 /// Customize the properties of a template, by choosing or modifying selected items.
 pub fn prompt_customize_template(
@@ -23,8 +26,9 @@ pub fn prompt_customize_template(
                     match option.0.id() {
                         ItemId::Profile(id) => {
                             template.profile.items.insert(id, value);
-                        }
-                        ItemId::Config(id) => {}
+                        } // ItemId::Config(_id) => {
+                          //     todo!();
+                          // }
                     }
                 }
             }
@@ -56,7 +60,7 @@ fn prompt_choose_entry(
             match self {
                 Row::Confirm => f.write_str("<Confirm>"),
                 Row::Profile { template, option } => {
-                    write!(f, "{:<24}", ProfileIdDisplay(option.id()).to_string())?;
+                    write!(f, "{:<24}", ItemId::Profile(option.id()).to_string())?;
 
                     if let Some(value) = template.profile.items.get(&option.id()) {
                         let val = format!("[{}]", TOMLValueFormatter(&value));
@@ -91,7 +95,7 @@ fn prompt_choose_entry(
 #[derive(Copy, Clone)]
 enum ItemId {
     Profile(ProfileItemId),
-    Config(ConfigItemId),
+    // Config(ConfigItemId),
 }
 
 impl Display for ItemId {
@@ -101,10 +105,13 @@ impl Display for ItemId {
                 ProfileItemId::DebugInfo => "Debug info",
                 ProfileItemId::Strip => "Strip symbols",
                 ProfileItemId::Lto => "Link-time optimizations",
+                ProfileItemId::CodegenUnits => "Number of codegen units (CGUs)",
+                ProfileItemId::Panic => "Panic handling mechanism",
+                ProfileItemId::OptimizationLevel => "Optimization level",
             },
-            ItemId::Config(_id) => {
-                todo!()
-            }
+            // ItemId::Config(_id) => {
+            //     todo!()
+            // }
         };
         f.write_str(description)
     }
@@ -121,19 +128,6 @@ impl<'a> Display for TOMLValueFormatter<'a> {
             TomlValue::Bool(value) => value.fmt(f),
             TomlValue::String(value) => value.fmt(f),
         }
-    }
-}
-
-struct ProfileIdDisplay(ProfileItemId);
-
-impl Display for ProfileIdDisplay {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let description = match self.0 {
-            ProfileItemId::DebugInfo => "Debug info",
-            ProfileItemId::Strip => "Strip symbols",
-            ProfileItemId::Lto => "Link-time optimizations",
-        };
-        f.write_str(description)
     }
 }
 
@@ -165,10 +159,10 @@ fn prompt_select_item_value(
 
     let existing_value = match item.0.id() {
         ItemId::Profile(id) => template.profile.items.get(&id),
-        ItemId::Config(_id) => {
-            todo!()
-            // template..items.get(&entry.label)
-        }
+        // ItemId::Config(_id) => {
+        //     todo!()
+        // template..items.get(&entry.label)
+        // }
     };
     // Select "Go back" as a default if no value is selected
     let index = existing_value

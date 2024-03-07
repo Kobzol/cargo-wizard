@@ -34,9 +34,9 @@ pub fn fast_compile_template() -> Template {
 pub fn fast_runtime_template() -> Template {
     TemplateBuilder::new(BuiltinProfile::Release)
         .profile_item(ProfileItemId::Lto, TomlValue::Bool(true))
+        .profile_item(ProfileItemId::CodegenUnits, TomlValue::Int(1))
+        .profile_item(ProfileItemId::Panic, TomlValue::String("abort".to_string()))
         .build()
-    //TableItem::int("codegen-units", 1),
-    //                     TableItem::string("panic", "abort"),
     // config: Some(ConfigTemplate {
     //     rustflags: vec!["-Ctarget-cpu=native".to_string()],
     // }),
@@ -45,14 +45,14 @@ pub fn fast_runtime_template() -> Template {
 /// Template that template focuses on minimal binary size.
 pub fn min_size_template() -> Template {
     TemplateBuilder::new(BuiltinProfile::Release)
+        .profile_item(ProfileItemId::DebugInfo, TomlValue::Int(0))
+        .profile_item(ProfileItemId::Strip, TomlValue::Bool(true))
         .profile_item(ProfileItemId::Lto, TomlValue::Bool(true))
+        .profile_item(
+            ProfileItemId::OptimizationLevel,
+            TomlValue::String("z".to_string()),
+        )
+        .profile_item(ProfileItemId::CodegenUnits, TomlValue::Int(1))
+        .profile_item(ProfileItemId::Panic, TomlValue::String("abort".to_string()))
         .build()
-    // items: vec![
-    //     TableItem::int("debug", 0),
-    //     TableItem::bool("strip", true),
-    //     TableItem::string("opt-level", "z"),
-    //     TableItem::bool("lto", true),
-    //     TableItem::int("codegen-units", 1),
-    //     TableItem::string("panic", "abort"),
-    // ],
 }

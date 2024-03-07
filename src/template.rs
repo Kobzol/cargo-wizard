@@ -53,6 +53,9 @@ pub enum ProfileItemId {
     DebugInfo,
     Strip,
     Lto,
+    CodegenUnits,
+    Panic,
+    OptimizationLevel,
 }
 
 /// Identifier of a specific item of the config part of a template.

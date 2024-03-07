@@ -1,7 +1,6 @@
 use crate::cli::CliConfig;
 use crate::dialog::utils::create_render_config;
 use crate::dialog::PromptResult;
-use cargo_wizard::CargoManifest;
 use inquire::ui::{Color, RenderConfig};
 use inquire::{min_length, Select, Text};
 use std::fmt::{Display, Formatter};

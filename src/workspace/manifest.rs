@@ -130,6 +130,9 @@ fn id_to_item_name(id: ProfileItemId) -> &'static str {
         ProfileItemId::DebugInfo => "debug",
         ProfileItemId::Strip => "strip",
         ProfileItemId::Lto => "lto",
+        ProfileItemId::CodegenUnits => "codegen-units",
+        ProfileItemId::Panic => "panic",
+        ProfileItemId::OptimizationLevel => "opt-level",
     }
 }
 

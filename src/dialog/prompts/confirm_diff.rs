@@ -1,13 +1,12 @@
 use std::fmt::{Display, Formatter};
 
-use anyhow::Context;
 use console::{style, Style};
 use inquire::Confirm;
 use similar::ChangeTag;
 
-use crate::cli::CliConfig;
-use cargo_wizard::{CargoConfig, CargoWorkspace, Template};
+use cargo_wizard::{CargoWorkspace, Template};
 
+use crate::cli::CliConfig;
 use crate::dialog::utils::{clear_line, create_render_config, file_style};
 use crate::dialog::PromptResult;
 
