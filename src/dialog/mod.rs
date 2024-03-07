@@ -1,8 +1,6 @@
 use anyhow::Context;
 
-use cargo_wizard::{
-    parse_workspace, resolve_manifest_path, KnownCargoOptions, PredefinedTemplateKind,
-};
+use cargo_wizard::{parse_workspace, resolve_manifest_path, PredefinedTemplateKind};
 pub use error::{DialogError, PromptResult};
 
 use crate::cli::CliConfig;
@@ -12,6 +10,7 @@ use crate::dialog::prompts::select_profile::prompt_select_profile;
 use crate::dialog::prompts::select_template::prompt_select_template;
 
 mod error;
+pub mod known_options;
 mod prompts;
 mod utils;
 
@@ -22,7 +21,7 @@ pub fn run_root_dialog(cli_config: CliConfig) -> PromptResult<()> {
     let profile = prompt_select_profile(&cli_config, workspace.existing_profiles())?;
 
     let template = template_kind.build_template();
-    let template = prompt_customize_template(&cli_config, KnownCargoOptions::default(), template)?;
+    let template = prompt_customize_template(&cli_config, template)?;
 
     let diff_result = prompt_confirm_diff(&cli_config, workspace, &profile, template)?;
     match diff_result {

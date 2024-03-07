@@ -56,3 +56,24 @@ pub fn min_size_template() -> Template {
         .profile_item(ProfileItemId::Panic, TomlValue::String("abort".to_string()))
         .build()
 }
+
+/// Test that the predefined templates can be created without panicking.
+#[cfg(test)]
+mod tests {
+    use crate::{fast_compile_template, fast_runtime_template, min_size_template};
+
+    #[test]
+    fn create_fast_compile_template() {
+        fast_compile_template();
+    }
+
+    #[test]
+    fn create_fast_runtime_template() {
+        fast_runtime_template();
+    }
+
+    #[test]
+    fn create_min_size_template() {
+        min_size_template();
+    }
+}
