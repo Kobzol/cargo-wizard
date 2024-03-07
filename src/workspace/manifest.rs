@@ -1,9 +1,10 @@
 use std::path::{Path, PathBuf};
 
+use anyhow::Context;
+use toml_edit::{table, value, Array, Document, Item, Value};
+
 use crate::template::TemplateItemId;
 use crate::{Template, TomlValue};
-use anyhow::Context;
-use toml_edit::{table, value, Document};
 
 /// Tries to resolve the workspace root manifest (Cargo.toml) path from the current directory.
 pub fn resolve_manifest_path() -> anyhow::Result<PathBuf> {
@@ -140,6 +141,26 @@ impl CargoManifest {
                 *existing_item = value(new_value);
             } else {
                 profile_table.insert(&entry.name, value(new_value));
+            }
+        }
+
+        // Add necessary Cargo features
+        if template.get_item(TemplateItemId::CodegenBackend).is_some() {
+            if let Some(features) = self
+                .document
+                .entry("cargo-features")
+                .or_insert(Item::Value(Value::Array(Array::new())))
+                .as_array_mut()
+            {
+                if !features
+                    .iter()
+                    .any(|v| v.as_str() == Some("codegen-backend"))
+                {
+                    features.push("codegen-backend");
+                }
+                if features.decor().suffix().is_none() {
+                    features.decor_mut().set_suffix("\n");
+                }
             }
         }
 
