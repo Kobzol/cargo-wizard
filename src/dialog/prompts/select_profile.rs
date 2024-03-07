@@ -8,7 +8,7 @@ use std::fmt::{Display, Formatter};
 
 pub fn prompt_select_profile(
     cli_config: &CliConfig,
-    manifest: &CargoManifest,
+    existing_profiles: Vec<String>,
 ) -> PromptResult<String> {
     enum Profile {
         Dev,
@@ -28,8 +28,7 @@ pub fn prompt_select_profile(
     }
 
     let mut profiles = vec![Profile::Dev, Profile::Release];
-    let mut original_profiles: Vec<_> = manifest
-        .get_profiles()
+    let mut original_profiles: Vec<_> = existing_profiles
         .into_iter()
         .filter(|p| !matches!(p.as_str(), "dev" | "release"))
         .collect();

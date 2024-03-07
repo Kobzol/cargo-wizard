@@ -6,10 +6,10 @@ use clap::Parser;
 use cargo_wizard::{parse_workspace, resolve_manifest_path, PredefinedTemplateKind};
 
 use crate::cli::CliConfig;
-// use crate::dialog::{run_root_dialog, DialogError};
+use crate::dialog::{run_root_dialog, DialogError};
 
 mod cli;
-// mod dialog;
+mod dialog;
 
 #[derive(clap::Parser, Debug)]
 #[clap(author, version, about)]
@@ -87,18 +87,18 @@ fn main() -> anyhow::Result<()> {
                     manifest.write()?;
                 }
                 None => {
-                    // if let Err(error) = run_root_dialog(cli_config) {
-                    //     match error {
-                    //         DialogError::Interrupted => {
-                    //             // Print an empty line when the app is interrupted, to avoid
-                    //             // overwriting the last line.
-                    //             println!();
-                    //         }
-                    //         DialogError::Generic(error) => {
-                    //             panic!("{error:?}");
-                    //         }
-                    //     }
-                    // }
+                    if let Err(error) = run_root_dialog(cli_config) {
+                        match error {
+                            DialogError::Interrupted => {
+                                // Print an empty line when the app is interrupted, to avoid
+                                // overwriting the last line.
+                                println!();
+                            }
+                            DialogError::Generic(error) => {
+                                panic!("{error:?}");
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -11,8 +11,8 @@ pub mod config;
 pub mod manifest;
 
 pub struct CargoWorkspace {
-    manifest: CargoManifest,
-    config: Option<CargoConfig>,
+    pub manifest: CargoManifest,
+    pub config: Option<CargoConfig>,
 }
 
 impl CargoWorkspace {
@@ -20,6 +20,10 @@ impl CargoWorkspace {
         self.manifest = self.manifest.apply_template(profile, template.profile)?;
 
         Ok(self)
+    }
+
+    pub fn existing_profiles(&self) -> Vec<String> {
+        self.manifest.get_profiles()
     }
 
     pub fn write(self) -> anyhow::Result<()> {

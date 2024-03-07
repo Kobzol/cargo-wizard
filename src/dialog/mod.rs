@@ -16,7 +16,7 @@ pub fn run_root_dialog(cli_config: CliConfig) -> PromptResult<()> {
     let template_kind = prompt_select_template(&cli_config)?;
     let manifest_path = resolve_manifest_path().context("Cannot resolve Cargo.toml path")?;
     let workspace = parse_workspace(&manifest_path)?;
-    let profile = prompt_select_profile(&cli_config, &workspace.manifest)?;
+    let profile = prompt_select_profile(&cli_config, workspace.existing_profiles())?;
 
     let template = template_kind.build_template();
     let diff_result = prompt_confirm_diff(workspace, &profile, template)?;
