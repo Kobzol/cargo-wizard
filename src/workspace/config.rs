@@ -1,10 +1,12 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+use crate::{Template, TemplateItemId, TomlValue};
 use anyhow::Context;
-use toml_edit::{Array, Document, Formatted, table, value, Value};
+use toml_edit::{table, value, Array, Document, Formatted, Value};
 
-#[derive(Debug)]
+/// Config stored in `.cargo/config.toml` file.
+#[derive(Debug, Clone)]
 pub struct CargoConfig {
     path: PathBuf,
     document: Document,
@@ -34,7 +36,26 @@ impl CargoConfig {
         self.document.to_string()
     }
 
-    pub fn apply_template(mut self, template: ConfigTemplate) -> anyhow::Result<Self> {
+    pub fn apply_template(mut self, template: &Template) -> anyhow::Result<Self> {
+        let rustflags: Vec<String> = template
+            .items
+            .iter()
+            .filter_map(|(id, value)| {
+                let TomlValue::String(value) = value else {
+                    return None;
+                };
+                match id {
+                    TemplateItemId::TargetCpuInstructionSet => {
+                        Some(format!("-Ctarget-cpu={value}"))
+                    }
+                    _ => None,
+                }
+            })
+            .collect();
+        if rustflags.is_empty() {
+            return Ok(self);
+        }
+
         let build = self
             .document
             .entry("build")
@@ -50,13 +71,21 @@ impl CargoConfig {
                 .filter_map(|v| v.as_str())
                 .map(|s| s.to_string())
                 .collect();
-            for arg in template.flags {
+            for arg in rustflags {
                 if !existing_strings.contains(&arg) {
                     array.push(Value::String(Formatted::new(arg)));
                 }
             }
-        } else if let Some(_value) = flags.as_value_mut() {
-            todo!();
+        } else if let Some(val) = flags.as_value_mut().filter(|v| v.is_str()) {
+            let flattened_flags = rustflags.join(" ");
+            let mut original_value = val.as_str().unwrap_or_default().to_string();
+            if !original_value.ends_with(' ') && !original_value.is_empty() {
+                original_value.push(' ');
+            }
+            original_value.push_str(&flattened_flags);
+            let decor = val.decor().clone();
+            *val = Value::String(Formatted::new(original_value));
+            *val.decor_mut() = decor;
         } else {
             return Err(anyhow::anyhow!(
                 "build.rustflags in config.toml is not a string or an array"
@@ -75,14 +104,132 @@ impl CargoConfig {
     }
 }
 
-#[derive(Clone, Default, Debug)]
-pub struct ConfigTemplate {
-    pub flags: Vec<String>,
-}
-
 pub fn config_path_from_manifest_path(manifest_path: &Path) -> PathBuf {
     manifest_path
         .parent()
         .map(|p| p.join(".cargo").join("config.toml"))
         .expect("Manifest path has no parent")
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use toml_edit::Document;
+
+    use crate::template::TemplateBuilder;
+    use crate::workspace::manifest::BuiltinProfile;
+    use crate::{CargoConfig, Template, TemplateItemId, TomlValue};
+
+    #[test]
+    fn create_rustflags() {
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
+        let config = create_empty_config().apply_template(&template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = ["-Ctarget-cpu=native"]
+        "###);
+    }
+
+    #[test]
+    fn append_to_array_rustflags() {
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
+        let config = create_config(
+            r#"
+[build]
+rustflags = ["-Cbar=foo"]
+"#,
+        );
+        let config = config.apply_template(&template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+    [build]
+    rustflags = ["-Cbar=foo", "-Ctarget-cpu=native"]
+    "###);
+    }
+
+    #[test]
+    fn ignore_existing_entry() {
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "foo")]);
+        let config = create_config(
+            r#"
+[build]
+rustflags = ["-Ctarget-cpu=foo"]
+"#,
+        );
+        let config = config.apply_template(&template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = ["-Ctarget-cpu=foo"]
+        "###);
+    }
+
+    #[test]
+    fn append_to_empty_string_rustflags() {
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
+        let config = create_config(
+            r#"
+[build]
+rustflags = ""
+"#,
+        );
+        let config = config.apply_template(&template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+            [build]
+            rustflags = "-Ctarget-cpu=native"
+            "###);
+    }
+
+    #[test]
+    fn append_to_string_rustflags() {
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
+        let config = create_config(
+            r#"
+[build]
+rustflags = "-Cfoo=bar"
+"#,
+        );
+        let config = config.apply_template(&template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = "-Cfoo=bar -Ctarget-cpu=native"
+        "###);
+    }
+
+    #[test]
+    fn append_to_string_rustflags_keep_formatting() {
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
+        let config = create_config(
+            r#"
+[build]
+rustflags = "-Cfoo=bar" # Foo
+"#,
+        );
+        let config = config.apply_template(&template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = "-Cfoo=bar -Ctarget-cpu=native" # Foo
+        "###);
+    }
+
+    fn create_template(items: &[(TemplateItemId, &str)]) -> Template {
+        let mut builder = TemplateBuilder::new(BuiltinProfile::Release);
+        for (id, value) in items {
+            builder = builder.item(*id, TomlValue::String(value.to_string()));
+        }
+        builder.build()
+    }
+
+    fn create_config(text: &str) -> CargoConfig {
+        CargoConfig {
+            path: Default::default(),
+            document: Document::from_str(text).unwrap(),
+        }
+    }
+
+    fn create_empty_config() -> CargoConfig {
+        CargoConfig {
+            path: Default::default(),
+            document: Default::default(),
+        }
+    }
 }

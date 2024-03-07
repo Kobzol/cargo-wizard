@@ -251,6 +251,11 @@ fn apply_fast_runtime_template() -> anyhow::Result<()> {
     panic = "abort"
     "###);
 
+    insta::assert_snapshot!(project.read_config(), @r###"
+    [build]
+    rustflags = ["-Ctarget-cpu=native"]
+    "###);
+
     Ok(())
 }
 
@@ -273,8 +278,8 @@ fn apply_min_size_template() -> anyhow::Result<()> {
     inherits = "release"
     debug = 0
     strip = true
-    opt-level = "z"
     lto = true
+    opt-level = "z"
     codegen-units = 1
     panic = "abort"
     "###);

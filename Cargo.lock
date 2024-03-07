@@ -127,6 +127,7 @@ dependencies = [
  "cargo_metadata",
  "clap",
  "console",
+ "indexmap",
  "inquire",
  "insta",
  "rexpect",

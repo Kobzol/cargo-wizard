@@ -1,9 +1,11 @@
 use std::path::{Path, PathBuf};
 
+use crate::template::TemplateItemId;
+use crate::Template;
 use anyhow::Context;
-use toml_edit::{Document, table, value};
+use toml_edit::{table, value, Document};
 
-use crate::toml::{TableItem, TomlTableTemplate};
+use crate::toml::TableItem;
 
 /// Tries to resolve the workspace root manifest (Cargo.toml) path from the current directory.
 pub fn resolve_manifest_path() -> anyhow::Result<PathBuf> {
@@ -18,19 +20,13 @@ pub fn resolve_manifest_path() -> anyhow::Result<PathBuf> {
     Ok(manifest_path)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum BuiltinProfile {
     Dev,
     Release,
 }
 
-#[derive(Clone)]
-pub struct TomlProfileTemplate {
-    pub inherits: BuiltinProfile,
-    pub template: TomlTableTemplate,
-}
-
-/// Manifest parsed out of a Cargo.toml file.
+/// Manifest parsed out of a `Cargo.toml` file.
 #[derive(Clone)]
 pub struct CargoManifest {
     path: PathBuf,
@@ -65,11 +61,7 @@ impl CargoManifest {
         self.document.to_string()
     }
 
-    pub fn apply_template(
-        mut self,
-        name: &str,
-        template: TomlProfileTemplate,
-    ) -> anyhow::Result<Self> {
+    pub fn apply_template(mut self, name: &str, template: &Template) -> anyhow::Result<Self> {
         let profiles_table = self
             .document
             .entry("profile")
@@ -86,7 +78,16 @@ impl CargoManifest {
                 anyhow::anyhow!("The profile.{name} table in Cargo.toml is not a table")
             })?;
 
-        let mut values = template.template.items.clone();
+        let mut values: Vec<TableItem> = template
+            .items
+            .iter()
+            .filter_map(|(id, value)| {
+                id_to_item_name(*id).map(|name| TableItem {
+                    name: name.to_string(),
+                    value: value.clone(),
+                })
+            })
+            .collect();
 
         if !is_builtin_profile(name) {
             let inherits = match template.inherits {
@@ -118,6 +119,18 @@ impl CargoManifest {
         std::fs::write(self.path, self.document.to_string())
             .context("Cannot write Cargo.toml manifest")?;
         Ok(())
+    }
+}
+
+fn id_to_item_name(id: TemplateItemId) -> Option<&'static str> {
+    match id {
+        TemplateItemId::DebugInfo => Some("debug"),
+        TemplateItemId::Strip => Some("strip"),
+        TemplateItemId::Lto => Some("lto"),
+        TemplateItemId::CodegenUnits => Some("codegen-units"),
+        TemplateItemId::Panic => Some("panic"),
+        TemplateItemId::OptimizationLevel => Some("opt-level"),
+        TemplateItemId::TargetCpuInstructionSet => None,
     }
 }
 

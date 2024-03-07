@@ -31,6 +31,10 @@ impl CargoProject {
         self
     }
 
+    pub fn file_exists<P: AsRef<Path>>(&self, path: P) -> bool {
+        self.path(path.as_ref()).is_file()
+    }
+
     pub fn read<P: AsRef<Path>>(&self, path: P) -> String {
         let path = path.as_ref();
         std::fs::read_to_string(self.path(path))
