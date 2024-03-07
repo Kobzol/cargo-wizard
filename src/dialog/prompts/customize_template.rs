@@ -25,7 +25,7 @@ pub fn prompt_customize_template(
                 break;
             }
             ChooseItemResponse::ModifyItem(id) => {
-                match prompt_select_item_value(cli_config, &template, id)? {
+                match prompt_select_value_for_item(cli_config, &template, id)? {
                     SelectItemValueResponse::Set(value) => {
                         template.items.insert(id.0, value);
                     }
@@ -154,7 +154,7 @@ enum SelectItemValueResponse {
 /// Select a value for a specific profile or config item.
 /// This function is passed a template so that it knows if any existing value
 /// is already selected.
-fn prompt_select_item_value(
+fn prompt_select_value_for_item(
     cli_config: &CliConfig,
     template: &Template,
     item_id: ItemId,
@@ -291,6 +291,7 @@ fn prompt_enter_custom_value(
     ))
     .with_validator(move |val: &Value| match (kind, &val.0) {
         (TomlValueKind::Int, TomlValue::Int(_)) => Ok(Validation::Valid),
+        (TomlValueKind::String, TomlValue::String(_)) => Ok(Validation::Valid),
         (kind, value) => Ok(Validation::Invalid(ErrorMessage::Custom(format!(
             "Invalid TOML type, expected `{}`, got {}",
             ValueKindDisplay(kind),
