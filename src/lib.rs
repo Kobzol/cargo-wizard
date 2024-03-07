@@ -1,8 +1,12 @@
 //! `cargo-wizard` is a Cargo subcommand that can apply preconfigured templates to your Cargo.toml manifest.
 //!
-//! Command-line usage:
+//! Non-interactive command-line usage:
 //! ```bash
-//! cargo wizard apply <profile> <template>
+//! cargo wizard apply <template> <profile>
+//! ```
+//! Interactive command-line usage:
+//! ```bash
+//! cargo wizard
 //! ```
 //!
 //! You can also use this crate as a library, although it probably won't be very useful.

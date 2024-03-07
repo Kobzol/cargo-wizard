@@ -38,7 +38,7 @@ pub fn run_root_dialog(cli_config: CliConfig) -> PromptResult<()> {
     Ok(())
 }
 
-fn on_template_applied(template: PredefinedTemplateKind, profile: &str) {
+pub fn on_template_applied(template: PredefinedTemplateKind, profile: &str) {
     utils::clear_line();
     println!(
         "✅ Template {} applied to profile {}.",

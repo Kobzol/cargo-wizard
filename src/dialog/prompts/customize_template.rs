@@ -173,7 +173,7 @@ fn prompt_select_item_value(
             match self {
                 Row::ConstantValue(value) => write!(
                     f,
-                    "{:<24} {}",
+                    "{:<40} {}",
                     value.description(),
                     value.value().to_toml_value().to_string(),
                 ),
@@ -181,7 +181,7 @@ fn prompt_select_item_value(
                     kind,
                     selected_value,
                 } => {
-                    write!(f, "{:<24}", "Custom value")?;
+                    write!(f, "{:<40}", "Custom value")?;
                     match selected_value {
                         SelectedPossibleValue::Custom { value } => {
                             write!(f, " {}", TomlValueDisplay(value))

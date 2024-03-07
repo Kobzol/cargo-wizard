@@ -6,7 +6,7 @@ use clap::Parser;
 use cargo_wizard::{parse_workspace, resolve_manifest_path, PredefinedTemplateKind};
 
 use crate::cli::CliConfig;
-use crate::dialog::{run_root_dialog, DialogError};
+use crate::dialog::{on_template_applied, run_root_dialog, DialogError};
 
 mod cli;
 mod dialog;
@@ -46,10 +46,10 @@ struct InnerArgs {
 
 #[derive(clap::Parser, Debug)]
 struct ProfileArgs {
-    /// Cargo profile that should be created or modified.
-    profile: String,
     /// Template that will be applied to the selected Cargo profile.
     template: PredefinedTemplateKind,
+    /// Cargo profile that should be created or modified.
+    profile: String,
 }
 
 #[derive(clap::Parser, Debug)]
@@ -85,6 +85,7 @@ fn main() -> anyhow::Result<()> {
                     let template = args.template.build_template();
                     let modified = workspace.apply_template(&args.profile, template)?;
                     modified.write()?;
+                    on_template_applied(args.template, &args.profile);
                 }
                 None => {
                     if let Err(error) = run_root_dialog(cli_config) {
