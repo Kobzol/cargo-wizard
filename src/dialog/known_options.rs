@@ -11,10 +11,10 @@ pub enum TomlValueKind {
 
 impl TomlValueKind {
     fn matches_value(&self, value: &TomlValue) -> bool {
-        match (value, self) {
-            (TomlValue::Int(_), TomlValueKind::Int) => true,
-            (TomlValue::String(_), TomlValueKind::String) => true,
-            _ => false,
+        match self {
+            TomlValueKind::Int if matches!(value, TomlValue::Int(_)) => true,
+            TomlValueKind::String if matches!(value, TomlValue::String(_)) => true,
+            TomlValueKind::Int | TomlValueKind::String => false,
         }
     }
 }

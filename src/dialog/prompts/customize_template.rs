@@ -289,18 +289,20 @@ fn prompt_enter_custom_value(
         "Enter custom value of type {}: ",
         ValueKindDisplay(kind)
     ))
-    .with_validator(move |val: &Value| match (kind, &val.0) {
-        (TomlValueKind::Int, TomlValue::Int(_)) => Ok(Validation::Valid),
-        (TomlValueKind::String, TomlValue::String(_)) => Ok(Validation::Valid),
-        (kind, value) => Ok(Validation::Invalid(ErrorMessage::Custom(format!(
-            "Invalid TOML type, expected `{}`, got {}",
-            ValueKindDisplay(kind),
-            match value {
-                TomlValue::Int(_) => "int",
-                TomlValue::Bool(_) => "bool",
-                TomlValue::String(_) => "string",
-            }
-        )))),
+    .with_validator(move |val: &Value| match kind {
+        TomlValueKind::Int if matches!(val.0, TomlValue::Int(_)) => Ok(Validation::Valid),
+        TomlValueKind::String if matches!(val.0, TomlValue::String(_)) => Ok(Validation::Valid),
+        TomlValueKind::Int | TomlValueKind::String => {
+            Ok(Validation::Invalid(ErrorMessage::Custom(format!(
+                "Invalid TOML type, expected `{}`, got {}",
+                ValueKindDisplay(kind),
+                match val.0 {
+                    TomlValue::Int(_) => "int",
+                    TomlValue::Bool(_) => "bool",
+                    TomlValue::String(_) => "string",
+                }
+            ))))
+        }
     })
     .with_render_config(create_render_config(cli_config))
     .prompt()?;
