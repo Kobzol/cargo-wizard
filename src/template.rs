@@ -62,7 +62,7 @@ pub enum ConfigItemId {
 }
 
 /// Possible value of a Cargo profile or a Cargo config, along with a description of what it does.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PossibleValue {
     description: String,
     value: TomlValue,
@@ -85,14 +85,28 @@ impl PossibleValue {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CargoOption<Id> {
     id: Id,
     possible_values: Vec<PossibleValue>,
 }
 
-impl<Id: Copy> CargoOption<Id> {
-    pub fn id(&self) -> Id {
+impl<Id> CargoOption<Id> {
+    pub fn with_id<I>(&self, id: I) -> CargoOption<I> {
+        let CargoOption {
+            id: _id,
+            possible_values,
+        } = self;
+        CargoOption {
+            id,
+            possible_values: possible_values.clone(),
+        }
+    }
+
+    pub fn id(&self) -> Id
+    where
+        Id: Copy,
+    {
         self.id
     }
 
@@ -107,8 +121,8 @@ pub struct KnownCargoOptions {
     config: Vec<CargoOption<ConfigItemId>>,
 }
 
-impl KnownCargoOptions {
-    pub fn new() -> Self {
+impl Default for KnownCargoOptions {
+    fn default() -> Self {
         Self {
             profile: vec![
                 CargoOption {
@@ -143,7 +157,9 @@ impl KnownCargoOptions {
             }],
         }
     }
+}
 
+impl KnownCargoOptions {
     pub fn get_profile(&self) -> &[CargoOption<ProfileItemId>] {
         &self.profile
     }
