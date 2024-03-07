@@ -8,7 +8,7 @@ use crate::workspace::manifest::BuiltinProfile;
 #[derive(Debug)]
 pub struct Template {
     pub profile: ProfileTemplate,
-    // pub conf: ProfileTemplate,
+    pub config: ConfigTemplate,
 }
 
 #[derive(Debug)]
@@ -17,10 +17,15 @@ pub struct ProfileTemplate {
     pub items: IndexMap<ProfileItemId, TomlValue>,
 }
 
+#[derive(Debug)]
+pub struct ConfigTemplate {
+    pub items: IndexMap<ConfigItemId, String>,
+}
+
 pub struct TemplateBuilder {
     inherits: BuiltinProfile,
     profile: IndexMap<ProfileItemId, TomlValue>,
-    // config: IndexMap<ConfigItemId, TomlValue>,
+    config: IndexMap<ConfigItemId, String>,
 }
 
 impl TemplateBuilder {
@@ -28,6 +33,7 @@ impl TemplateBuilder {
         Self {
             inherits,
             profile: Default::default(),
+            config: Default::default(),
         }
     }
 
@@ -36,13 +42,23 @@ impl TemplateBuilder {
         self
     }
 
+    pub fn config_item(mut self, id: ConfigItemId, value: String) -> Self {
+        assert!(self.config.insert(id, value).is_none());
+        self
+    }
+
     pub fn build(self) -> Template {
-        let TemplateBuilder { inherits, profile } = self;
+        let TemplateBuilder {
+            inherits,
+            profile,
+            config,
+        } = self;
         Template {
             profile: ProfileTemplate {
                 inherits,
                 items: profile,
             },
+            config: ConfigTemplate { items: config },
         }
     }
 }

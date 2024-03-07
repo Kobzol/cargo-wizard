@@ -3,10 +3,6 @@ use cargo_wizard::{ProfileItemId, TomlValue};
 /// Known options from Cargo, containing descriptions and possible values.
 pub struct KnownCargoOptions;
 
-// Enumerate all values
-// Is value selected?
-// Is value a custom string/int?
-
 #[derive(Copy, Clone)]
 pub enum TomlValueKind {
     Int,
@@ -130,13 +126,6 @@ impl KnownCargoOptions {
             ]),
         }
     }
-    // config: vec![CargoOption {
-    //     id: ConfigItemId::TargetCpu,
-    //     possible_values: vec![PossibleValue::new(
-    //         "Target CPU",
-    //         TomlValue::String("native".to_string()),
-    //     )],
-    // }],
 }
 
 /// Possible value of a Cargo profile or a Cargo config, along with a description of what it does.

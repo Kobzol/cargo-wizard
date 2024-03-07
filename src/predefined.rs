@@ -1,7 +1,7 @@
 use crate::template::ProfileItemId;
 use crate::toml::TomlValue;
 use crate::workspace::manifest::BuiltinProfile;
-use crate::{Template, TemplateBuilder};
+use crate::{ConfigItemId, Template, TemplateBuilder};
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 pub enum PredefinedTemplateKind {
@@ -36,10 +36,8 @@ pub fn fast_runtime_template() -> Template {
         .profile_item(ProfileItemId::Lto, TomlValue::Bool(true))
         .profile_item(ProfileItemId::CodegenUnits, TomlValue::Int(1))
         .profile_item(ProfileItemId::Panic, TomlValue::String("abort".to_string()))
+        .config_item(ConfigItemId::TargetCpu, "native".to_string())
         .build()
-    // config: Some(ConfigTemplate {
-    //     rustflags: vec!["-Ctarget-cpu=native".to_string()],
-    // }),
 }
 
 /// Template that template focuses on minimal binary size.

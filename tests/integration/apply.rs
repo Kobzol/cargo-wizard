@@ -273,8 +273,8 @@ fn apply_min_size_template() -> anyhow::Result<()> {
     inherits = "release"
     debug = 0
     strip = true
-    opt-level = "z"
     lto = true
+    opt-level = "z"
     codegen-units = 1
     panic = "abort"
     "###);
