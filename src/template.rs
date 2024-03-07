@@ -1,46 +1,64 @@
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 use crate::toml::TomlValue;
 use crate::workspace::manifest::BuiltinProfile;
 
 /// A set of Cargo profile items and .cargo/config.toml config items that can be applied to a
 /// Cargo workspace.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Template {
+    pub profile: ProfileTemplate,
+    // pub conf: ProfileTemplate,
+}
+
+#[derive(Debug)]
+pub struct ProfileTemplate {
     pub inherits: BuiltinProfile,
-    pub items: HashMap<TemplateItemId, TomlValue>,
+    pub items: IndexMap<ProfileItemId, TomlValue>,
 }
 
 pub struct TemplateBuilder {
     inherits: BuiltinProfile,
-    items: HashMap<TemplateItemId, TomlValue>,
+    profile: IndexMap<ProfileItemId, TomlValue>,
+    // config: IndexMap<ConfigItemId, TomlValue>,
 }
 
 impl TemplateBuilder {
     pub fn new(inherits: BuiltinProfile) -> Self {
         Self {
             inherits,
-            items: Default::default(),
+            profile: Default::default(),
         }
     }
 
-    pub fn item(mut self, id: TemplateItemId, value: TomlValue) -> Self {
-        self.items.insert(id, value);
+    pub fn profile_item(mut self, id: ProfileItemId, value: TomlValue) -> Self {
+        assert!(self.profile.insert(id, value).is_none());
         self
     }
 
     pub fn build(self) -> Template {
-        let TemplateBuilder { inherits, items } = self;
-        Template { inherits, items }
+        let TemplateBuilder { inherits, profile } = self;
+        Template {
+            profile: ProfileTemplate {
+                inherits,
+                items: profile,
+            },
+        }
     }
 }
 
-/// Identifier of a specific item of a template.
+/// Identifier of a specific item of the profile part of a template.
 #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
-pub enum TemplateItemId {
-    ProfileDebugInfo,
-    ProfileStrip,
-    ProfileLto,
+pub enum ProfileItemId {
+    DebugInfo,
+    Strip,
+    Lto,
+}
+
+/// Identifier of a specific item of the config part of a template.
+#[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
+pub enum ConfigItemId {
+    TargetCpu,
 }
 
 /// Possible value of a Cargo profile or a Cargo config, along with a description of what it does.
@@ -68,13 +86,13 @@ impl PossibleValue {
 }
 
 #[derive(Debug)]
-pub struct CargoOption {
-    id: TemplateItemId,
+pub struct CargoOption<Id> {
+    id: Id,
     possible_values: Vec<PossibleValue>,
 }
 
-impl CargoOption {
-    pub fn id(&self) -> TemplateItemId {
+impl<Id: Copy> CargoOption<Id> {
+    pub fn id(&self) -> Id {
         self.id
     }
 
@@ -85,40 +103,52 @@ impl CargoOption {
 
 /// Known options from Cargo, containing descriptions and possible values.
 pub struct KnownCargoOptions {
-    options: Vec<CargoOption>,
+    profile: Vec<CargoOption<ProfileItemId>>,
+    config: Vec<CargoOption<ConfigItemId>>,
 }
 
 impl KnownCargoOptions {
     pub fn new() -> Self {
         Self {
-            options: vec![
+            profile: vec![
                 CargoOption {
-                    id: TemplateItemId::ProfileDebugInfo,
+                    id: ProfileItemId::DebugInfo,
                     possible_values: vec![
                         PossibleValue::new("Disable debuginfo", TomlValue::Bool(false)),
                         PossibleValue::new("Enable debuginfo", TomlValue::Bool(true)),
                     ],
                 },
-                CargoOption {
-                    id: TemplateItemId::ProfileStrip,
-                    possible_values: vec![
-                        PossibleValue::new("Do not strip anything", TomlValue::Bool(false)),
-                        PossibleValue::new(
-                            "Strip debug info",
-                            TomlValue::String("debuginfo".to_string()),
-                        ),
-                        PossibleValue::new(
-                            "Strip symbols",
-                            TomlValue::String("symbols".to_string()),
-                        ),
-                        PossibleValue::new("Strip debug info and symbols", TomlValue::Bool(true)),
-                    ],
-                },
+                // CargoOption {
+                //     id: ConfigItemId::Strip,
+                //     possible_values: vec![
+                //         PossibleValue::new("Do not strip anything", TomlValue::Bool(false)),
+                //         PossibleValue::new(
+                //             "Strip debug info",
+                //             TomlValue::String("debuginfo".to_string()),
+                //         ),
+                //         PossibleValue::new(
+                //             "Strip symbols",
+                //             TomlValue::String("symbols".to_string()),
+                //         ),
+                //         PossibleValue::new("Strip debug info and symbols", TomlValue::Bool(true)),
+                //     ],
+                // },
             ],
+            config: vec![CargoOption {
+                id: ConfigItemId::TargetCpu,
+                possible_values: vec![PossibleValue::new(
+                    "Target CPU",
+                    TomlValue::String("native".to_string()),
+                )],
+            }],
         }
     }
 
-    pub fn get_options(&self) -> &[CargoOption] {
-        &self.options
+    pub fn get_profile(&self) -> &[CargoOption<ProfileItemId>] {
+        &self.profile
+    }
+
+    pub fn get_config(&self) -> &[CargoOption<ConfigItemId>] {
+        &self.config
     }
 }

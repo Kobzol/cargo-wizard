@@ -1,6 +1,7 @@
+use crate::template::ProfileItemId;
 use crate::toml::TomlValue;
 use crate::workspace::manifest::BuiltinProfile;
-use crate::{Template, TemplateBuilder, TemplateItemId};
+use crate::{Template, TemplateBuilder};
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 pub enum PredefinedTemplateKind {
@@ -25,14 +26,14 @@ impl PredefinedTemplateKind {
 /// Template that focuses on quick compile time.
 pub fn fast_compile_template() -> Template {
     TemplateBuilder::new(BuiltinProfile::Dev)
-        .item(TemplateItemId::ProfileDebugInfo, TomlValue::Int(0))
+        .profile_item(ProfileItemId::DebugInfo, TomlValue::Int(0))
         .build()
 }
 
 /// Template that focuses on maximum runtime performance.
 pub fn fast_runtime_template() -> Template {
     TemplateBuilder::new(BuiltinProfile::Release)
-        .item(TemplateItemId::ProfileLto, TomlValue::Bool(true))
+        .profile_item(ProfileItemId::Lto, TomlValue::Bool(true))
         .build()
     //TableItem::int("codegen-units", 1),
     //                     TableItem::string("panic", "abort"),
@@ -44,7 +45,7 @@ pub fn fast_runtime_template() -> Template {
 /// Template that template focuses on minimal binary size.
 pub fn min_size_template() -> Template {
     TemplateBuilder::new(BuiltinProfile::Release)
-        .item(TemplateItemId::ProfileLto, TomlValue::Bool(true))
+        .profile_item(ProfileItemId::Lto, TomlValue::Bool(true))
         .build()
     // items: vec![
     //     TableItem::int("debug", 0),

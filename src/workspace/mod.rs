@@ -11,12 +11,14 @@ pub mod config;
 pub mod manifest;
 
 pub struct CargoWorkspace {
-    pub manifest: CargoManifest,
-    pub config: Option<CargoConfig>,
+    manifest: CargoManifest,
+    config: Option<CargoConfig>,
 }
 
 impl CargoWorkspace {
-    pub fn apply_template(self, template: Template) -> anyhow::Result<Self> {
+    pub fn apply_template(mut self, profile: &str, template: Template) -> anyhow::Result<Self> {
+        self.manifest = self.manifest.apply_template(profile, template.profile)?;
+
         Ok(self)
     }
 

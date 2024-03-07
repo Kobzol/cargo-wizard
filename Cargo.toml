@@ -29,6 +29,7 @@ atty = "0.2.14"
 cargo_metadata = "0.18.1"
 clap = { version = "4.5.1", features = ["derive"] }
 console = { version = "0.15.8", features = ["windows-console-colors"] }
+indexmap = "2.2.5"
 inquire = "0.7.0"
 similar = { version = "2.4.0", features = ["inline"] }
 thiserror = "1.0.57"

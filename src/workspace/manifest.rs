@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use crate::template::{ProfileItemId, ProfileTemplate};
 use anyhow::Context;
 use toml_edit::{table, value, Document};
 
@@ -65,11 +66,7 @@ impl CargoManifest {
         self.document.to_string()
     }
 
-    pub fn apply_template(
-        mut self,
-        name: &str,
-        template: TomlProfileTemplate,
-    ) -> anyhow::Result<Self> {
+    pub fn apply_template(mut self, name: &str, template: ProfileTemplate) -> anyhow::Result<Self> {
         let profiles_table = self
             .document
             .entry("profile")
@@ -86,7 +83,14 @@ impl CargoManifest {
                 anyhow::anyhow!("The profile.{name} table in Cargo.toml is not a table")
             })?;
 
-        let mut values = template.template.items.clone();
+        let mut values: Vec<TableItem> = template
+            .items
+            .iter()
+            .map(|(id, value)| TableItem {
+                name: id_to_item_name(*id).to_string(),
+                value: value.clone(),
+            })
+            .collect();
 
         if !is_builtin_profile(name) {
             let inherits = match template.inherits {
@@ -118,6 +122,14 @@ impl CargoManifest {
         std::fs::write(self.path, self.document.to_string())
             .context("Cannot write Cargo.toml manifest")?;
         Ok(())
+    }
+}
+
+fn id_to_item_name(id: ProfileItemId) -> &'static str {
+    match id {
+        ProfileItemId::DebugInfo => "debug",
+        ProfileItemId::Strip => "strip",
+        ProfileItemId::Lto => "lto",
     }
 }
 
