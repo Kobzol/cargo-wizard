@@ -19,7 +19,7 @@ pub fn run_root_dialog(cli_config: CliConfig) -> PromptResult<()> {
     let profile = prompt_select_profile(&cli_config, workspace.existing_profiles())?;
 
     let template = template_kind.build_template();
-    let diff_result = prompt_confirm_diff(workspace, &profile, template)?;
+    let diff_result = prompt_confirm_diff(&cli_config, workspace, &profile, template)?;
     match diff_result {
         ConfirmDiffPromptResponse::Accepted(workspace) => {
             workspace.write()?;

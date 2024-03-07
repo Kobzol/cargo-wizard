@@ -5,9 +5,10 @@ use console::{style, Style};
 use inquire::Confirm;
 use similar::ChangeTag;
 
+use crate::cli::CliConfig;
 use cargo_wizard::{CargoConfig, CargoWorkspace, Template};
 
-use crate::dialog::utils::{clear_line, file_style};
+use crate::dialog::utils::{clear_line, create_render_config, file_style};
 use crate::dialog::PromptResult;
 
 pub enum ConfirmDiffPromptResponse {
@@ -17,6 +18,7 @@ pub enum ConfirmDiffPromptResponse {
 }
 
 pub fn prompt_confirm_diff(
+    cli_config: &CliConfig,
     mut workspace: CargoWorkspace,
     profile: &str,
     template: Template,
@@ -77,6 +79,7 @@ pub fn prompt_confirm_diff(
         if multiple_diffs { "s" } else { "" }
     ))
     .with_default(true)
+    .with_render_config(create_render_config(cli_config))
     .prompt()?;
 
     Ok(match answer {
