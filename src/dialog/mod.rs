@@ -2,6 +2,7 @@ use anyhow::Context;
 
 use cargo_wizard::{
     parse_workspace, resolve_manifest_path, BuiltinProfile, PredefinedTemplateKind, Profile,
+    Template,
 };
 pub use error::{DialogError, PromptResult};
 
@@ -16,6 +17,7 @@ mod known_options;
 mod prompts;
 mod utils;
 
+use crate::dialog::known_options::KnownCargoOptions;
 pub use utils::profile_from_str;
 
 pub fn run_root_dialog(cli_config: CliConfig) -> PromptResult<()> {
@@ -33,11 +35,11 @@ pub fn run_root_dialog(cli_config: CliConfig) -> PromptResult<()> {
     let template = template_kind.build_template();
     let template = prompt_customize_template(&cli_config, template)?;
 
-    let diff_result = prompt_confirm_diff(&cli_config, workspace, &profile, template)?;
+    let diff_result = prompt_confirm_diff(&cli_config, workspace, &profile, &template)?;
     match diff_result {
         ConfirmDiffPromptResponse::Accepted(workspace) => {
             workspace.write()?;
-            on_template_applied(template_kind, &profile);
+            on_template_applied(template_kind, &template, &profile);
         }
         ConfirmDiffPromptResponse::Denied => {}
         ConfirmDiffPromptResponse::NoDiff => {
@@ -48,11 +50,15 @@ pub fn run_root_dialog(cli_config: CliConfig) -> PromptResult<()> {
     Ok(())
 }
 
-pub fn on_template_applied(template: PredefinedTemplateKind, profile: &Profile) {
+pub fn on_template_applied(
+    template_kind: PredefinedTemplateKind,
+    template: &Template,
+    profile: &Profile,
+) {
     utils::clear_line();
     println!(
         "✅ Template {} applied to profile {}.",
-        utils::template_style().apply_to(match template {
+        utils::template_style().apply_to(match template_kind {
             PredefinedTemplateKind::FastCompile => "FastCompile",
             PredefinedTemplateKind::FastRuntime => "FastRuntime",
             PredefinedTemplateKind::MinSize => "MinSize",
@@ -60,19 +66,29 @@ pub fn on_template_applied(template: PredefinedTemplateKind, profile: &Profile) 
         utils::profile_style().apply_to(profile.name())
     );
 
+    let requires_nightly = template
+        .iter_items()
+        .map(|(id, _)| id)
+        .any(|id| KnownCargoOptions::get_metadata(id).requires_nightly());
     let profile_flag = match profile {
         Profile::Builtin(BuiltinProfile::Dev) => None,
         Profile::Builtin(BuiltinProfile::Release) => Some("--release".to_string()),
         Profile::Custom(profile) => Some(format!("--profile={profile}")),
     };
     if let Some(flag) = profile_flag {
+        let channel = if requires_nightly { "+nightly " } else { "" };
+
         println!(
             "❗ Do not forget to run `{}` to use the selected profile.",
-            utils::command_style().apply_to(format!("cargo <cmd> {flag}"))
+            utils::command_style().apply_to(format!("cargo {channel}<cmd> {flag}"))
         );
     }
 
-    if let PredefinedTemplateKind::FastRuntime = template {
+    if requires_nightly {
+        println!("❗ You will have to use a nightly compiler.");
+    }
+
+    if let PredefinedTemplateKind::FastRuntime = template_kind {
         println!(
             "\nTip: Consider using the {} subcommand to further optimize your binary.",
             utils::command_style().apply_to("cargo-pgo")

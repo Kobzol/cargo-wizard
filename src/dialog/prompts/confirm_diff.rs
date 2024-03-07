@@ -20,7 +20,7 @@ pub fn prompt_confirm_diff(
     cli_config: &CliConfig,
     workspace: CargoWorkspace,
     profile: &Profile,
-    template: Template,
+    template: &Template,
 ) -> PromptResult<ConfirmDiffPromptResponse> {
     let modified = workspace.apply_template(profile, template)?;
 

@@ -161,6 +161,7 @@ fn id_to_item_name(id: TemplateItemId) -> Option<&'static str> {
         TemplateItemId::CodegenUnits => Some("codegen-units"),
         TemplateItemId::Panic => Some("panic"),
         TemplateItemId::OptimizationLevel => Some("opt-level"),
+        TemplateItemId::CodegenBackend => Some("codegen-backend"),
         TemplateItemId::TargetCpuInstructionSet => None,
     }
 }

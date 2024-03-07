@@ -95,9 +95,9 @@ fn main() -> anyhow::Result<()> {
                     };
                     let workspace = parse_workspace(&manifest_path)?;
                     let template = args.template.build_template();
-                    let modified = workspace.apply_template(&args.profile.0, template)?;
+                    let modified = workspace.apply_template(&args.profile.0, &template)?;
                     modified.write()?;
-                    on_template_applied(args.template, &args.profile.0);
+                    on_template_applied(args.template, &template, &args.profile.0);
                 }
                 None => {
                     if let Err(error) = run_root_dialog(cli_config) {

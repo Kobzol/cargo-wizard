@@ -28,6 +28,7 @@ pub enum SelectedPossibleValue {
 pub struct TemplateItemMedata {
     values: Vec<PossibleValue>,
     custom_value: Option<TomlValueKind>,
+    requires_nightly: bool,
 }
 
 impl TemplateItemMedata {
@@ -49,12 +50,17 @@ impl TemplateItemMedata {
     pub fn get_custom_value_kind(&self) -> Option<TomlValueKind> {
         self.custom_value
     }
+
+    pub fn requires_nightly(&self) -> bool {
+        self.requires_nightly
+    }
 }
 
 #[derive(Default)]
 struct MetadataBuilder {
     values: Vec<PossibleValue>,
     custom_value: Option<TomlValueKind>,
+    requires_nightly: bool,
 }
 
 impl MetadataBuilder {
@@ -62,10 +68,12 @@ impl MetadataBuilder {
         let MetadataBuilder {
             values,
             custom_value,
+            requires_nightly,
         } = self;
         TemplateItemMedata {
             values,
             custom_value,
+            requires_nightly,
         }
     }
 
@@ -90,6 +98,11 @@ impl MetadataBuilder {
         self.custom_value = Some(kind);
         self
     }
+
+    fn requires_nightly(mut self) -> Self {
+        self.requires_nightly = true;
+        self
+    }
 }
 
 impl KnownCargoOptions {
@@ -99,6 +112,7 @@ impl KnownCargoOptions {
             TemplateItemId::Lto,
             TemplateItemId::CodegenUnits,
             TemplateItemId::TargetCpuInstructionSet,
+            TemplateItemId::CodegenBackend,
             TemplateItemId::Panic,
             TemplateItemId::DebugInfo,
             TemplateItemId::Strip,
@@ -145,6 +159,11 @@ impl KnownCargoOptions {
             TemplateItemId::TargetCpuInstructionSet => MetadataBuilder::default()
                 .string("Native (best for the local CPU)", "native")
                 .custom_value(TomlValueKind::String)
+                .build(),
+            TemplateItemId::CodegenBackend => MetadataBuilder::default()
+                .string("LLVM", "llvm")
+                .string("Cranelift", "cranelift")
+                .requires_nightly()
                 .build(),
         }
     }

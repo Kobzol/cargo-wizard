@@ -115,6 +115,7 @@ impl Display for ItemId {
             TemplateItemId::CodegenUnits => "Number of codegen units (CGUs)",
             TemplateItemId::Panic => "Panic handling mechanism",
             TemplateItemId::OptimizationLevel => "Optimization level",
+            TemplateItemId::CodegenBackend => "Codegen backend",
             TemplateItemId::TargetCpuInstructionSet => "Target CPU instruction set",
         };
         f.write_str(description)

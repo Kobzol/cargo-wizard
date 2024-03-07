@@ -22,7 +22,7 @@ impl CargoWorkspace {
     pub fn apply_template(
         self,
         profile: &Profile,
-        template: Template,
+        template: &Template,
     ) -> anyhow::Result<ModifiedWorkspace> {
         let old_manifest = self.manifest.clone();
         let new_manifest = self.manifest.apply_template(profile, &template)?;
