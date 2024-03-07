@@ -10,6 +10,7 @@ use crate::workspace::config::{config_path_from_manifest_path, CargoConfig};
 pub mod config;
 pub mod manifest;
 
+/// Cargo workspace project.
 #[derive(Clone)]
 pub struct CargoWorkspace {
     pub manifest: CargoManifest,
@@ -51,6 +52,7 @@ impl CargoWorkspace {
     }
 }
 
+/// Workspace that was modified through a template.
 pub struct ModifiedWorkspace {
     pub manifest: ModificationResult<CargoManifest>,
     pub config: ModificationResult<CargoConfig>,
@@ -74,6 +76,7 @@ impl ModifiedWorkspace {
     }
 }
 
+/// Result of modification of a manifest or a config.
 pub enum ModificationResult<T> {
     NoChange,
     Modified { old: T, new: T },

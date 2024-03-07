@@ -5,7 +5,7 @@ use crate::Template;
 use anyhow::Context;
 use toml_edit::{table, value, Document};
 
-use crate::toml::{TableItem, TomlTableTemplate};
+use crate::toml::TableItem;
 
 /// Tries to resolve the workspace root manifest (Cargo.toml) path from the current directory.
 pub fn resolve_manifest_path() -> anyhow::Result<PathBuf> {
@@ -26,13 +26,7 @@ pub enum BuiltinProfile {
     Release,
 }
 
-#[derive(Clone)]
-pub struct TomlProfileTemplate {
-    pub inherits: BuiltinProfile,
-    pub template: TomlTableTemplate,
-}
-
-/// Manifest parsed out of a Cargo.toml file.
+/// Manifest parsed out of a `Cargo.toml` file.
 #[derive(Clone)]
 pub struct CargoManifest {
     path: PathBuf,

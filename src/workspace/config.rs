@@ -5,6 +5,7 @@ use crate::{Template, TemplateItemId, TomlValue};
 use anyhow::Context;
 use toml_edit::{table, value, Array, Document, Formatted, Value};
 
+/// Config stored in `.cargo/config.toml` file.
 #[derive(Debug, Clone)]
 pub struct CargoConfig {
     path: PathBuf,
@@ -116,8 +117,9 @@ mod tests {
 
     use toml_edit::Document;
 
+    use crate::template::TemplateBuilder;
     use crate::workspace::manifest::BuiltinProfile;
-    use crate::{CargoConfig, Template, TemplateBuilder, TemplateItemId, TomlValue};
+    use crate::{CargoConfig, Template, TemplateItemId, TomlValue};
 
     #[test]
     fn create_rustflags() {

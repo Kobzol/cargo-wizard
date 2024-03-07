@@ -11,6 +11,7 @@ pub struct Template {
     pub items: IndexMap<TemplateItemId, TomlValue>,
 }
 
+#[doc(hidden)]
 pub struct TemplateBuilder {
     inherits: BuiltinProfile,
     profile: IndexMap<TemplateItemId, TomlValue>,

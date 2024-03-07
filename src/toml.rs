@@ -7,20 +7,6 @@ pub struct TableItem {
 }
 
 impl TableItem {
-    pub fn int(name: &str, value: i64) -> Self {
-        Self {
-            name: name.to_string(),
-            value: TomlValue::Int(value),
-        }
-    }
-
-    pub fn bool(name: &str, value: bool) -> Self {
-        Self {
-            name: name.to_string(),
-            value: TomlValue::Bool(value),
-        }
-    }
-
     pub fn string(name: &str, value: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -35,6 +21,7 @@ pub struct TomlTableTemplate {
     pub items: Vec<TableItem>,
 }
 
+/// Representation of a numeric, boolean or a string TOML value.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TomlValue {
     Int(i64),

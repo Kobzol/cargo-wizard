@@ -1,8 +1,9 @@
-use crate::template::TemplateItemId;
+use crate::template::{TemplateBuilder, TemplateItemId};
 use crate::toml::TomlValue;
 use crate::workspace::manifest::BuiltinProfile;
-use crate::{Template, TemplateBuilder};
+use crate::Template;
 
+/// Enumeration of predefined templates.
 #[derive(clap::ValueEnum, Clone, Debug)]
 pub enum PredefinedTemplateKind {
     /// Profile designed for fast compilation times.
