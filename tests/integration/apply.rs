@@ -17,8 +17,8 @@ edition = "2021"
     project
         .cmd(&[
             "apply",
-            "dev",
             "fast-compile",
+            "dev",
             "--manifest-path",
             manifest_path,
         ])
@@ -59,7 +59,7 @@ members = ["bar"]
     );
 
     project
-        .cmd(&["apply", "dev", "fast-compile"])
+        .cmd(&["apply", "fast-compile", "dev"])
         .cwd(&project.path("bar"))
         .run()?
         .assert_ok();
@@ -79,7 +79,7 @@ fn apply_missing_builtin() -> anyhow::Result<()> {
     let project = init_cargo_project()?;
 
     project
-        .cmd(&["apply", "dev", "fast-compile"])
+        .cmd(&["apply", "fast-compile", "dev"])
         .run()?
         .assert_ok();
     insta::assert_snapshot!(project.read_manifest(), @r###"
@@ -112,7 +112,7 @@ debug = 1
     );
 
     project
-        .cmd(&["apply", "dev", "fast-compile"])
+        .cmd(&["apply", "fast-compile", "dev"])
         .run()?
         .assert_ok();
     insta::assert_snapshot!(project.read_manifest(), @r###"
@@ -133,7 +133,7 @@ fn apply_missing_custom() -> anyhow::Result<()> {
     let project = init_cargo_project()?;
 
     project
-        .cmd(&["apply", "custom1", "fast-compile"])
+        .cmd(&["apply", "fast-compile", "custom1"])
         .run()?
         .assert_ok();
     insta::assert_snapshot!(project.read_manifest(), @r###"
@@ -168,7 +168,7 @@ debug = 1
     );
 
     project
-        .cmd(&["apply", "custom1", "fast-compile"])
+        .cmd(&["apply", "fast-compile", "custom1"])
         .run()?
         .assert_ok();
     insta::assert_snapshot!(project.read_manifest(), @r###"
@@ -207,7 +207,7 @@ codegen-units    = 10
     );
 
     project
-        .cmd(&["apply", "dev", "fast-compile"])
+        .cmd(&["apply", "fast-compile", "dev"])
         .run()?
         .assert_ok();
     insta::assert_snapshot!(project.read_manifest(), @r###"
@@ -234,7 +234,7 @@ fn apply_fast_runtime_template() -> anyhow::Result<()> {
     let project = init_cargo_project()?;
 
     project
-        .cmd(&["apply", "custom", "fast-runtime"])
+        .cmd(&["apply", "fast-runtime", "custom"])
         .run()?
         .assert_ok();
     insta::assert_snapshot!(project.read_manifest(), @r###"
@@ -264,7 +264,7 @@ fn apply_min_size_template() -> anyhow::Result<()> {
     let project = init_cargo_project()?;
 
     project
-        .cmd(&["apply", "custom", "min-size"])
+        .cmd(&["apply", "min-size", "custom"])
         .run()?
         .assert_ok();
     insta::assert_snapshot!(project.read_manifest(), @r###"
