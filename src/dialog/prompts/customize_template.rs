@@ -9,7 +9,7 @@ use cargo_wizard::{Template, TemplateItemId, TomlValue};
 
 use crate::cli::CliConfig;
 use crate::dialog::known_options::{
-    KnownCargoOptions, PossibleValue, PossibleValueSet, SelectedPossibleValue, TomlValueKind,
+    KnownCargoOptions, PossibleValue, SelectedPossibleValue, TemplateItemMedata, TomlValueKind,
 };
 use crate::dialog::utils::create_render_config;
 use crate::dialog::PromptResult;
@@ -97,8 +97,8 @@ fn prompt_choose_item_or_confirm_template(
 struct ItemId(TemplateItemId);
 
 impl ItemId {
-    fn value_set(&self) -> PossibleValueSet {
-        KnownCargoOptions::get_possible_values(self.0)
+    fn value_set(&self) -> TemplateItemMedata {
+        KnownCargoOptions::get_metadata(self.0)
     }
 
     fn selected_value(&self, template: &Template) -> Option<TomlValue> {

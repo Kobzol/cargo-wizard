@@ -25,12 +25,12 @@ pub enum SelectedPossibleValue {
     None,
 }
 
-pub struct PossibleValueSet {
+pub struct TemplateItemMedata {
     values: Vec<PossibleValue>,
     custom_value: Option<TomlValueKind>,
 }
 
-impl PossibleValueSet {
+impl TemplateItemMedata {
     fn new(values: &[PossibleValue]) -> Self {
         Self {
             values: values.to_vec(),
@@ -78,9 +78,9 @@ impl KnownCargoOptions {
         ]
     }
 
-    pub fn get_possible_values(id: TemplateItemId) -> PossibleValueSet {
+    pub fn get_metadata(id: TemplateItemId) -> TemplateItemMedata {
         match id {
-            TemplateItemId::OptimizationLevel => PossibleValueSet::new(&[
+            TemplateItemId::OptimizationLevel => TemplateItemMedata::new(&[
                 PossibleValue::new("No optimizations", TomlValue::Int(0)),
                 PossibleValue::new("Basic optimizations", TomlValue::Int(1)),
                 PossibleValue::new("Some optimizations", TomlValue::Int(2)),
@@ -94,21 +94,21 @@ impl KnownCargoOptions {
                     TomlValue::String("z".to_string()),
                 ),
             ]),
-            TemplateItemId::Lto => PossibleValueSet::new(&[
+            TemplateItemId::Lto => TemplateItemMedata::new(&[
                 PossibleValue::new("Disable LTO", TomlValue::String("off".to_string())),
                 PossibleValue::new("Thin local LTO (default)", TomlValue::Bool(false)),
                 PossibleValue::new("Thin LTO", TomlValue::String("thin".to_string())),
                 PossibleValue::new("Fat LTO", TomlValue::Bool(true)),
             ]),
-            TemplateItemId::CodegenUnits => PossibleValueSet::new_with_custom(
+            TemplateItemId::CodegenUnits => TemplateItemMedata::new_with_custom(
                 &[PossibleValue::new("1 CGU", TomlValue::Int(1))],
                 TomlValueKind::Int,
             ),
-            TemplateItemId::Panic => PossibleValueSet::new(&[
+            TemplateItemId::Panic => TemplateItemMedata::new(&[
                 PossibleValue::new("Unwind", TomlValue::String("unwind".to_string())),
                 PossibleValue::new("Abort", TomlValue::String("abort".to_string())),
             ]),
-            TemplateItemId::DebugInfo => PossibleValueSet::new(&[
+            TemplateItemId::DebugInfo => TemplateItemMedata::new(&[
                 PossibleValue::new("Disable debuginfo", TomlValue::Bool(false)),
                 PossibleValue::new(
                     "Enable line directives",
@@ -121,7 +121,7 @@ impl KnownCargoOptions {
                 PossibleValue::new("Limited debuginfo", TomlValue::Int(1)),
                 PossibleValue::new("Full debuginfo", TomlValue::Bool(true)),
             ]),
-            TemplateItemId::Strip => PossibleValueSet::new(&[
+            TemplateItemId::Strip => TemplateItemMedata::new(&[
                 PossibleValue::new("Do not strip anything", TomlValue::Bool(false)),
                 PossibleValue::new(
                     "Strip debug info",
@@ -130,7 +130,7 @@ impl KnownCargoOptions {
                 PossibleValue::new("Strip symbols", TomlValue::String("symbols".to_string())),
                 PossibleValue::new("Strip debug info and symbols", TomlValue::Bool(true)),
             ]),
-            TemplateItemId::TargetCpuInstructionSet => PossibleValueSet::new_with_custom(
+            TemplateItemId::TargetCpuInstructionSet => TemplateItemMedata::new_with_custom(
                 &[PossibleValue::new(
                     "Native (best for the local CPU)",
                     TomlValue::string("native"),
@@ -173,7 +173,7 @@ mod tests {
     #[test]
     fn get_profile_id_possible_values() {
         for id in KnownCargoOptions::get_all_ids() {
-            assert!(!KnownCargoOptions::get_possible_values(id)
+            assert!(!KnownCargoOptions::get_metadata(id)
                 .get_possible_values()
                 .is_empty());
         }
