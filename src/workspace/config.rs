@@ -38,8 +38,7 @@ impl CargoConfig {
 
     pub fn apply_template(mut self, template: &Template) -> anyhow::Result<Self> {
         let rustflags: Vec<String> = template
-            .items
-            .iter()
+            .iter_items()
             .filter_map(|(id, value)| {
                 let TomlValue::String(value) = value else {
                     return None;

@@ -27,10 +27,10 @@ pub fn prompt_customize_template(
             ChooseItemResponse::ModifyItem(id) => {
                 match prompt_select_value_for_item(cli_config, &template, id)? {
                     SelectItemValueResponse::Set(value) => {
-                        template.items.insert(id.0, value);
+                        template.insert_item(id.0, value);
                     }
                     SelectItemValueResponse::Unset => {
-                        template.items.shift_remove(&id.0);
+                        template.remove_item(id.0);
                     }
                     SelectItemValueResponse::Cancel => {}
                 }
@@ -63,7 +63,7 @@ fn prompt_choose_item_or_confirm_template(
                 Row::Item { id, template } => {
                     write!(f, "{:<30}", id.to_string())?;
 
-                    if let Some(value) = template.items.get(&id.0) {
+                    if let Some(value) = template.get_item(id.0) {
                         let val = format!("[{}]", TomlValueDisplay(&value));
                         write!(f, "{val:>10}")
                     } else {
@@ -102,7 +102,7 @@ impl ItemId {
     }
 
     fn selected_value(&self, template: &Template) -> Option<TomlValue> {
-        template.items.get(&self.0).cloned()
+        template.get_item(self.0).cloned()
     }
 }
 

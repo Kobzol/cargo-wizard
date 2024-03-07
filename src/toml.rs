@@ -1,26 +1,5 @@
 use toml_edit::Formatted;
 
-#[derive(Clone, Debug)]
-pub struct TableItem {
-    pub name: String,
-    pub value: TomlValue,
-}
-
-impl TableItem {
-    pub fn string(name: &str, value: &str) -> Self {
-        Self {
-            name: name.to_string(),
-            value: TomlValue::String(value.to_string()),
-        }
-    }
-}
-
-/// A template that contains prefilled values that can add or replace fields in a TOML table.
-#[derive(Clone)]
-pub struct TomlTableTemplate {
-    pub items: Vec<TableItem>,
-}
-
 /// Representation of a numeric, boolean or a string TOML value.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TomlValue {

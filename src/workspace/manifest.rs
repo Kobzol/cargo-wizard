@@ -1,11 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use crate::template::TemplateItemId;
-use crate::Template;
+use crate::{Template, TomlValue};
 use anyhow::Context;
 use toml_edit::{table, value, Document};
-
-use crate::toml::TableItem;
 
 /// Tries to resolve the workspace root manifest (Cargo.toml) path from the current directory.
 pub fn resolve_manifest_path() -> anyhow::Result<PathBuf> {
@@ -20,7 +18,7 @@ pub fn resolve_manifest_path() -> anyhow::Result<PathBuf> {
     Ok(manifest_path)
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum BuiltinProfile {
     Dev,
     Release,
@@ -118,10 +116,9 @@ impl CargoManifest {
             })?;
 
         let mut values: Vec<TableItem> = template
-            .items
-            .iter()
+            .iter_items()
             .filter_map(|(id, value)| {
-                id_to_item_name(*id).map(|name| TableItem {
+                id_to_item_name(id).map(|name| TableItem {
                     name: name.to_string(),
                     value: value.clone(),
                 })
@@ -130,7 +127,7 @@ impl CargoManifest {
 
         if !profile.is_builtin() {
             // Add "inherits" to the table
-            values.insert(0, TableItem::string("inherits", template.inherits.name()));
+            values.insert(0, TableItem::string("inherits", template.inherits().name()));
         }
 
         for entry in values {
@@ -165,5 +162,20 @@ fn id_to_item_name(id: TemplateItemId) -> Option<&'static str> {
         TemplateItemId::Panic => Some("panic"),
         TemplateItemId::OptimizationLevel => Some("opt-level"),
         TemplateItemId::TargetCpuInstructionSet => None,
+    }
+}
+
+#[derive(Clone, Debug)]
+struct TableItem {
+    name: String,
+    value: TomlValue,
+}
+
+impl TableItem {
+    fn string(name: &str, value: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            value: TomlValue::String(value.to_string()),
+        }
     }
 }

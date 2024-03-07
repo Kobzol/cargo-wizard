@@ -7,8 +7,30 @@ use crate::workspace::manifest::BuiltinProfile;
 /// Cargo workspace.
 #[derive(Debug)]
 pub struct Template {
-    pub inherits: BuiltinProfile,
-    pub items: IndexMap<TemplateItemId, TomlValue>,
+    inherits: BuiltinProfile,
+    items: IndexMap<TemplateItemId, TomlValue>,
+}
+
+impl Template {
+    pub fn inherits(&self) -> BuiltinProfile {
+        self.inherits
+    }
+
+    pub fn iter_items(&self) -> impl Iterator<Item = (TemplateItemId, &TomlValue)> {
+        self.items.iter().map(|(id, value)| (*id, value))
+    }
+
+    pub fn get_item(&self, id: TemplateItemId) -> Option<&TomlValue> {
+        self.items.get(&id)
+    }
+
+    pub fn insert_item(&mut self, id: TemplateItemId, value: TomlValue) {
+        self.items.insert(id, value);
+    }
+
+    pub fn remove_item(&mut self, id: TemplateItemId) {
+        self.items.shift_remove(&id);
+    }
 }
 
 #[doc(hidden)]

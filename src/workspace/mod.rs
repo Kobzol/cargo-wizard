@@ -14,8 +14,8 @@ pub mod manifest;
 /// Cargo workspace project.
 #[derive(Clone)]
 pub struct CargoWorkspace {
-    pub manifest: CargoManifest,
-    pub config: CargoConfig,
+    manifest: CargoManifest,
+    config: CargoConfig,
 }
 
 impl CargoWorkspace {
@@ -55,11 +55,19 @@ impl CargoWorkspace {
 
 /// Workspace that was modified through a template.
 pub struct ModifiedWorkspace {
-    pub manifest: ModificationResult<CargoManifest>,
-    pub config: ModificationResult<CargoConfig>,
+    manifest: ModificationResult<CargoManifest>,
+    config: ModificationResult<CargoConfig>,
 }
 
 impl ModifiedWorkspace {
+    pub fn manifest(&self) -> &ModificationResult<CargoManifest> {
+        &self.manifest
+    }
+
+    pub fn config(&self) -> &ModificationResult<CargoConfig> {
+        &self.config
+    }
+
     pub fn write(self) -> anyhow::Result<()> {
         match self.manifest {
             ModificationResult::NoChange => {}

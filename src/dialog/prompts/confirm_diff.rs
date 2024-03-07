@@ -25,7 +25,7 @@ pub fn prompt_confirm_diff(
     let modified = workspace.apply_template(profile, template)?;
 
     // Cargo.toml
-    let manifest_diff = match &modified.manifest {
+    let manifest_diff = match &modified.manifest() {
         ModificationResult::NoChange => None,
         ModificationResult::Modified { old, new } => {
             Some(render_diff(&old.get_text(), &new.get_text()))
@@ -39,7 +39,7 @@ pub fn prompt_confirm_diff(
     }
 
     // .cargo/config.toml
-    let config_diff = match &modified.config {
+    let config_diff = match &modified.config() {
         ModificationResult::NoChange => None,
         ModificationResult::Modified { old, new } => {
             Some(render_diff(&old.get_text(), &new.get_text()))
