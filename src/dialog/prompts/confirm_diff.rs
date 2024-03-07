@@ -4,7 +4,7 @@ use console::{style, Style};
 use inquire::Confirm;
 use similar::ChangeTag;
 
-use cargo_wizard::{CargoWorkspace, ModificationResult, ModifiedWorkspace, Template};
+use cargo_wizard::{CargoWorkspace, ModificationResult, ModifiedWorkspace, Profile, Template};
 
 use crate::cli::CliConfig;
 use crate::dialog::utils::{clear_line, create_render_config, file_style};
@@ -19,7 +19,7 @@ pub enum ConfirmDiffPromptResponse {
 pub fn prompt_confirm_diff(
     cli_config: &CliConfig,
     workspace: CargoWorkspace,
-    profile: &str,
+    profile: &Profile,
     template: Template,
 ) -> PromptResult<ConfirmDiffPromptResponse> {
     let modified = workspace.apply_template(profile, template)?;

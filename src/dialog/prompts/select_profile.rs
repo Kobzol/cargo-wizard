@@ -1,39 +1,43 @@
 use crate::cli::CliConfig;
 use crate::dialog::utils::create_render_config;
 use crate::dialog::PromptResult;
+use cargo_wizard::Profile;
 use inquire::ui::{Color, RenderConfig};
 use inquire::{min_length, Select, Text};
 use std::fmt::{Display, Formatter};
 
 pub fn prompt_select_profile(
     cli_config: &CliConfig,
-    existing_profiles: Vec<String>,
-) -> PromptResult<String> {
-    enum Profile {
+    existing_profiles: Vec<Profile>,
+) -> PromptResult<Profile> {
+    enum ProfileRow {
         Dev,
         Release,
         Custom(String),
         CreateNew,
     }
-    impl Display for Profile {
+    impl Display for ProfileRow {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             match self {
-                Profile::Dev => f.write_str("dev (builtin)"),
-                Profile::Release => f.write_str("release (builtin)"),
-                Profile::Custom(name) => f.write_str(name),
-                Profile::CreateNew => f.write_str("<Create a new profile>"),
+                ProfileRow::Dev => f.write_str("dev (builtin)"),
+                ProfileRow::Release => f.write_str("release (builtin)"),
+                ProfileRow::Custom(name) => f.write_str(name),
+                ProfileRow::CreateNew => f.write_str("<Create a new profile>"),
             }
         }
     }
 
-    let mut profiles = vec![Profile::Dev, Profile::Release];
+    let mut profiles = vec![ProfileRow::Dev, ProfileRow::Release];
     let mut original_profiles: Vec<_> = existing_profiles
         .into_iter()
-        .filter(|p| !matches!(p.as_str(), "dev" | "release"))
+        .filter_map(|p| match p {
+            Profile::Builtin(_) => None,
+            Profile::Custom(custom) => Some(custom.clone()),
+        })
         .collect();
     original_profiles.sort();
-    profiles.extend(original_profiles.into_iter().map(Profile::Custom));
-    profiles.push(Profile::CreateNew);
+    profiles.extend(original_profiles.into_iter().map(ProfileRow::Custom));
+    profiles.push(ProfileRow::CreateNew);
 
     let selected = Select::new(
         "Select the profile that you want to update/create:",
@@ -43,20 +47,26 @@ pub fn prompt_select_profile(
     .prompt()?;
 
     let profile = match selected {
-        Profile::Dev => "dev".to_string(),
-        Profile::Release => "release".to_string(),
-        Profile::Custom(name) => name,
-        Profile::CreateNew => prompt_enter_profile_name(cli_config)?,
+        ProfileRow::Dev => Profile::dev(),
+        ProfileRow::Release => Profile::release(),
+        ProfileRow::Custom(name) => Profile::Custom(name),
+        ProfileRow::CreateNew => prompt_enter_profile_name(cli_config)?,
     };
 
     Ok(profile)
 }
 
-fn prompt_enter_profile_name(cli_config: &CliConfig) -> PromptResult<String> {
-    Ok(Text::new("Select profile name:")
+fn prompt_enter_profile_name(cli_config: &CliConfig) -> PromptResult<Profile> {
+    let profile = Text::new("Select profile name:")
         .with_validator(min_length!(1))
         .with_render_config(profile_render_config(cli_config))
-        .prompt()?)
+        .prompt()?;
+    let profile = match profile.as_str() {
+        "dev" => Profile::dev(),
+        "release" => Profile::release(),
+        _ => Profile::Custom(profile),
+    };
+    Ok(profile)
 }
 
 fn profile_render_config(cli_config: &CliConfig) -> RenderConfig<'static> {

@@ -6,6 +6,7 @@ use crate::Template;
 use manifest::CargoManifest;
 
 use crate::workspace::config::{config_path_from_manifest_path, CargoConfig};
+use crate::workspace::manifest::Profile;
 
 pub mod config;
 pub mod manifest;
@@ -20,7 +21,7 @@ pub struct CargoWorkspace {
 impl CargoWorkspace {
     pub fn apply_template(
         self,
-        profile: &str,
+        profile: &Profile,
         template: Template,
     ) -> anyhow::Result<ModifiedWorkspace> {
         let old_manifest = self.manifest.clone();

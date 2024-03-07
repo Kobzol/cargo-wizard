@@ -26,6 +26,42 @@ pub enum BuiltinProfile {
     Release,
 }
 
+impl BuiltinProfile {
+    fn name(&self) -> &str {
+        match self {
+            BuiltinProfile::Dev => "dev",
+            BuiltinProfile::Release => "release",
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum Profile {
+    Builtin(BuiltinProfile),
+    Custom(String),
+}
+
+impl Profile {
+    pub fn dev() -> Self {
+        Self::Builtin(BuiltinProfile::Dev)
+    }
+
+    pub fn release() -> Self {
+        Self::Builtin(BuiltinProfile::Release)
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Profile::Builtin(builtin) => builtin.name(),
+            Profile::Custom(name) => name.as_str(),
+        }
+    }
+
+    pub fn is_builtin(&self) -> bool {
+        matches!(self, Profile::Builtin(_))
+    }
+}
+
 /// Manifest parsed out of a `Cargo.toml` file.
 #[derive(Clone)]
 pub struct CargoManifest {
@@ -45,10 +81,6 @@ impl CargoManifest {
         })
     }
 
-    pub fn get_path(&self) -> &Path {
-        &self.path
-    }
-
     pub fn get_profiles(&self) -> Vec<String> {
         self.document
             .get("profile")
@@ -61,7 +93,11 @@ impl CargoManifest {
         self.document.to_string()
     }
 
-    pub fn apply_template(mut self, name: &str, template: &Template) -> anyhow::Result<Self> {
+    pub fn apply_template(
+        mut self,
+        profile: &Profile,
+        template: &Template,
+    ) -> anyhow::Result<Self> {
         let profiles_table = self
             .document
             .entry("profile")
@@ -71,11 +107,14 @@ impl CargoManifest {
         profiles_table.set_dotted(true);
 
         let profile_table = profiles_table
-            .entry(name)
+            .entry(profile.name())
             .or_insert(table())
             .as_table_mut()
             .ok_or_else(|| {
-                anyhow::anyhow!("The profile.{name} table in Cargo.toml is not a table")
+                anyhow::anyhow!(
+                    "The profile.{} table in Cargo.toml is not a table",
+                    profile.name()
+                )
             })?;
 
         let mut values: Vec<TableItem> = template
@@ -89,14 +128,9 @@ impl CargoManifest {
             })
             .collect();
 
-        if !is_builtin_profile(name) {
-            let inherits = match template.inherits {
-                BuiltinProfile::Dev => "dev",
-                BuiltinProfile::Release => "release",
-            };
-
+        if !profile.is_builtin() {
             // Add "inherits" to the table
-            values.insert(0, TableItem::string("inherits", inherits));
+            values.insert(0, TableItem::string("inherits", template.inherits.name()));
         }
 
         for entry in values {
@@ -132,8 +166,4 @@ fn id_to_item_name(id: TemplateItemId) -> Option<&'static str> {
         TemplateItemId::OptimizationLevel => Some("opt-level"),
         TemplateItemId::TargetCpuInstructionSet => None,
     }
-}
-
-fn is_builtin_profile(name: &str) -> bool {
-    matches!(name, "dev" | "release")
 }

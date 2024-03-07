@@ -1,6 +1,8 @@
 use anyhow::Context;
 
-use cargo_wizard::{parse_workspace, resolve_manifest_path, PredefinedTemplateKind};
+use cargo_wizard::{
+    parse_workspace, resolve_manifest_path, BuiltinProfile, PredefinedTemplateKind, Profile,
+};
 pub use error::{DialogError, PromptResult};
 
 use crate::cli::CliConfig;
@@ -10,15 +12,23 @@ use crate::dialog::prompts::select_profile::prompt_select_profile;
 use crate::dialog::prompts::select_template::prompt_select_template;
 
 mod error;
-pub mod known_options;
+mod known_options;
 mod prompts;
 mod utils;
+
+pub use utils::profile_from_str;
 
 pub fn run_root_dialog(cli_config: CliConfig) -> PromptResult<()> {
     let template_kind = prompt_select_template(&cli_config)?;
     let manifest_path = resolve_manifest_path().context("Cannot resolve Cargo.toml path")?;
     let workspace = parse_workspace(&manifest_path)?;
-    let profile = prompt_select_profile(&cli_config, workspace.existing_profiles())?;
+
+    let existing_profiles = workspace
+        .existing_profiles()
+        .iter()
+        .filter_map(|s| profile_from_str(s).ok())
+        .collect();
+    let profile = prompt_select_profile(&cli_config, existing_profiles)?;
 
     let template = template_kind.build_template();
     let template = prompt_customize_template(&cli_config, template)?;
@@ -38,7 +48,7 @@ pub fn run_root_dialog(cli_config: CliConfig) -> PromptResult<()> {
     Ok(())
 }
 
-pub fn on_template_applied(template: PredefinedTemplateKind, profile: &str) {
+pub fn on_template_applied(template: PredefinedTemplateKind, profile: &Profile) {
     utils::clear_line();
     println!(
         "✅ Template {} applied to profile {}.",
@@ -47,13 +57,13 @@ pub fn on_template_applied(template: PredefinedTemplateKind, profile: &str) {
             PredefinedTemplateKind::FastRuntime => "FastRuntime",
             PredefinedTemplateKind::MinSize => "MinSize",
         }),
-        utils::profile_style().apply_to(&profile)
+        utils::profile_style().apply_to(profile.name())
     );
 
     let profile_flag = match profile {
-        "dev" => None,
-        "release" => Some("--release".to_string()),
-        profile => Some(format!("--profile={profile}")),
+        Profile::Builtin(BuiltinProfile::Dev) => None,
+        Profile::Builtin(BuiltinProfile::Release) => Some("--release".to_string()),
+        Profile::Custom(profile) => Some(format!("--profile={profile}")),
     };
     if let Some(flag) = profile_flag {
         println!(

@@ -15,7 +15,7 @@ pub use predefined::*;
 pub use template::{Template, TemplateItemId};
 pub use toml::TomlValue;
 pub use workspace::config::CargoConfig;
-pub use workspace::manifest::{resolve_manifest_path, CargoManifest};
+pub use workspace::manifest::{resolve_manifest_path, BuiltinProfile, CargoManifest, Profile};
 pub use workspace::{parse_workspace, CargoWorkspace, ModificationResult, ModifiedWorkspace};
 
 mod predefined;

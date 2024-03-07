@@ -1,12 +1,13 @@
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use anyhow::Context;
 use clap::Parser;
 
-use cargo_wizard::{parse_workspace, resolve_manifest_path, PredefinedTemplateKind};
+use cargo_wizard::{parse_workspace, resolve_manifest_path, PredefinedTemplateKind, Profile};
 
 use crate::cli::CliConfig;
-use crate::dialog::{on_template_applied, run_root_dialog, DialogError};
+use crate::dialog::{on_template_applied, profile_from_str, run_root_dialog, DialogError};
 
 mod cli;
 mod dialog;
@@ -44,12 +45,23 @@ struct InnerArgs {
     subcmd: Option<SubCommand>,
 }
 
+#[derive(Clone, Debug)]
+struct ProfileArg(Profile);
+
+impl FromStr for ProfileArg {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        profile_from_str(s).map(ProfileArg)
+    }
+}
+
 #[derive(clap::Parser, Debug)]
 struct ProfileArgs {
     /// Template that will be applied to the selected Cargo profile.
     template: PredefinedTemplateKind,
     /// Cargo profile that should be created or modified.
-    profile: String,
+    profile: ProfileArg,
 }
 
 #[derive(clap::Parser, Debug)]
@@ -83,9 +95,9 @@ fn main() -> anyhow::Result<()> {
                     };
                     let workspace = parse_workspace(&manifest_path)?;
                     let template = args.template.build_template();
-                    let modified = workspace.apply_template(&args.profile, template)?;
+                    let modified = workspace.apply_template(&args.profile.0, template)?;
                     modified.write()?;
-                    on_template_applied(args.template, &args.profile);
+                    on_template_applied(args.template, &args.profile.0);
                 }
                 None => {
                     if let Err(error) = run_root_dialog(cli_config) {

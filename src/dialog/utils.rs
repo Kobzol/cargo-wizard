@@ -1,4 +1,5 @@
 use crate::cli::CliConfig;
+use cargo_wizard::Profile;
 use console::Style;
 use inquire::ui::RenderConfig;
 
@@ -29,4 +30,16 @@ pub fn file_style() -> Style {
 /// Clear the current line to print arbitrary text after a prompt.
 pub fn clear_line() {
     print!("\r");
+}
+
+pub fn profile_from_str(text: &str) -> Result<Profile, String> {
+    if text.is_empty() {
+        return Err("Profile cannot be empty".to_string());
+    }
+    let profile = match text {
+        "dev" => Profile::dev(),
+        "release" => Profile::release(),
+        custom => Profile::Custom(custom.to_string()),
+    };
+    Ok(profile)
 }
