@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use crate::template::{ProfileItemId, ProfileTemplate};
+use crate::template::TemplateItemId;
+use crate::Template;
 use anyhow::Context;
 use toml_edit::{table, value, Document};
 
@@ -66,7 +67,7 @@ impl CargoManifest {
         self.document.to_string()
     }
 
-    pub fn apply_template(mut self, name: &str, template: ProfileTemplate) -> anyhow::Result<Self> {
+    pub fn apply_template(mut self, name: &str, template: &Template) -> anyhow::Result<Self> {
         let profiles_table = self
             .document
             .entry("profile")
@@ -86,9 +87,11 @@ impl CargoManifest {
         let mut values: Vec<TableItem> = template
             .items
             .iter()
-            .map(|(id, value)| TableItem {
-                name: id_to_item_name(*id).to_string(),
-                value: value.clone(),
+            .filter_map(|(id, value)| {
+                id_to_item_name(*id).map(|name| TableItem {
+                    name: name.to_string(),
+                    value: value.clone(),
+                })
             })
             .collect();
 
@@ -125,14 +128,15 @@ impl CargoManifest {
     }
 }
 
-fn id_to_item_name(id: ProfileItemId) -> &'static str {
+fn id_to_item_name(id: TemplateItemId) -> Option<&'static str> {
     match id {
-        ProfileItemId::DebugInfo => "debug",
-        ProfileItemId::Strip => "strip",
-        ProfileItemId::Lto => "lto",
-        ProfileItemId::CodegenUnits => "codegen-units",
-        ProfileItemId::Panic => "panic",
-        ProfileItemId::OptimizationLevel => "opt-level",
+        TemplateItemId::DebugInfo => Some("debug"),
+        TemplateItemId::Strip => Some("strip"),
+        TemplateItemId::Lto => Some("lto"),
+        TemplateItemId::CodegenUnits => Some("codegen-units"),
+        TemplateItemId::Panic => Some("panic"),
+        TemplateItemId::OptimizationLevel => Some("opt-level"),
+        TemplateItemId::TargetCpuInstructionSet => None,
     }
 }
 

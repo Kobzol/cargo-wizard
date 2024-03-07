@@ -5,7 +5,7 @@ use std::str::FromStr;
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{CustomType, Select};
 
-use cargo_wizard::{ProfileItemId, Template, TomlValue};
+use cargo_wizard::{Template, TemplateItemId, TomlValue};
 
 use crate::cli::CliConfig;
 use crate::dialog::known_options::{
@@ -27,22 +27,10 @@ pub fn prompt_customize_template(
             ChooseItemResponse::ModifyItem(id) => {
                 match prompt_select_item_value(cli_config, &template, id)? {
                     SelectItemValueResponse::Set(value) => {
-                        match id {
-                            ItemId::Profile(id) => {
-                                template.profile.items.insert(id, value);
-                            } // ItemId::Config(_id) => {
-                              //     todo!();
-                              // }
-                        }
+                        template.items.insert(id.0, value);
                     }
                     SelectItemValueResponse::Unset => {
-                        match id {
-                            ItemId::Profile(id) => {
-                                template.profile.items.shift_remove(&id);
-                            } // ItemId::Config(_id) => {
-                              //     todo!();
-                              // }
-                        }
+                        template.items.shift_remove(&id.0);
                     }
                     SelectItemValueResponse::Cancel => {}
                 }
@@ -65,20 +53,17 @@ fn prompt_choose_item_or_confirm_template(
 ) -> PromptResult<ChooseItemResponse> {
     enum Row<'a> {
         Confirm,
-        Profile {
-            id: ProfileItemId,
-            template: &'a Template,
-        },
+        Item { id: ItemId, template: &'a Template },
     }
 
     impl<'a> Display for Row<'a> {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             match self {
                 Row::Confirm => f.write_str("<Confirm>"),
-                Row::Profile { id, template } => {
-                    write!(f, "{:<30}", ItemId::Profile(*id).to_string())?;
+                Row::Item { id, template } => {
+                    write!(f, "{:<30}", id.to_string())?;
 
-                    if let Some(value) = template.profile.items.get(id) {
+                    if let Some(value) = template.items.get(&id.0) {
                         let val = format!("[{}]", TomlValueDisplay(&value));
                         write!(f, "{val:>10}")
                     } else {
@@ -91,9 +76,12 @@ fn prompt_choose_item_or_confirm_template(
 
     let rows = std::iter::once(Row::Confirm)
         .chain(
-            KnownCargoOptions::profile_ids()
+            KnownCargoOptions::get_all_ids()
                 .iter()
-                .map(|&id| Row::Profile { id, template }),
+                .map(|&id| Row::Item {
+                    id: ItemId(id),
+                    template,
+                }),
         )
         .collect();
     let answer = Select::new("Select items to modify or confirm the template:", rows)
@@ -101,44 +89,33 @@ fn prompt_choose_item_or_confirm_template(
         .prompt()?;
     Ok(match answer {
         Row::Confirm => ChooseItemResponse::ConfirmTemplate,
-        Row::Profile { id, .. } => ChooseItemResponse::ModifyItem(ItemId::Profile(id)),
+        Row::Item { id, .. } => ChooseItemResponse::ModifyItem(id),
     })
 }
 
 #[derive(Copy, Clone)]
-enum ItemId {
-    Profile(ProfileItemId),
-    // Config(ConfigItemId),
-}
+struct ItemId(TemplateItemId);
 
 impl ItemId {
     fn value_set(&self) -> PossibleValueSet {
-        match self {
-            ItemId::Profile(id) => KnownCargoOptions::profile_item_values(*id),
-        }
+        KnownCargoOptions::get_possible_values(self.0)
     }
 
     fn selected_value(&self, template: &Template) -> Option<TomlValue> {
-        match self {
-            ItemId::Profile(id) => template.profile.items.get(id).cloned(),
-        }
+        template.items.get(&self.0).cloned()
     }
 }
 
 impl Display for ItemId {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let description = match self {
-            ItemId::Profile(id) => match id {
-                ProfileItemId::DebugInfo => "Debug info",
-                ProfileItemId::Strip => "Strip symbols",
-                ProfileItemId::Lto => "Link-time optimizations",
-                ProfileItemId::CodegenUnits => "Number of codegen units (CGUs)",
-                ProfileItemId::Panic => "Panic handling mechanism",
-                ProfileItemId::OptimizationLevel => "Optimization level",
-            },
-            // ItemId::Config(_id) => {
-            //     todo!()
-            // }
+        let description = match self.0 {
+            TemplateItemId::DebugInfo => "Debug info",
+            TemplateItemId::Strip => "Strip symbols",
+            TemplateItemId::Lto => "Link-time optimizations",
+            TemplateItemId::CodegenUnits => "Number of codegen units (CGUs)",
+            TemplateItemId::Panic => "Panic handling mechanism",
+            TemplateItemId::OptimizationLevel => "Optimization level",
+            TemplateItemId::TargetCpuInstructionSet => "Target CPU instruction set",
         };
         f.write_str(description)
     }
@@ -160,9 +137,11 @@ struct ValueKindDisplay(TomlValueKind);
 
 impl Display for ValueKindDisplay {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self.0 {
-            TomlValueKind::Int => f.write_str("int"),
-        }
+        let kind = match self.0 {
+            TomlValueKind::Int => "int",
+            TomlValueKind::String => "string",
+        };
+        f.write_str(kind)
     }
 }
 
@@ -207,9 +186,7 @@ fn prompt_select_item_value(
                         SelectedPossibleValue::Custom { value } => {
                             write!(f, " {}", TomlValueDisplay(value))
                         }
-                        _ => match kind {
-                            TomlValueKind::Int => write!(f, "({})", ValueKindDisplay(*kind)),
-                        },
+                        _ => write!(f, "({})", ValueKindDisplay(*kind)),
                     }
                 }
                 Row::Unset => f.write_str("<Unset value>"),

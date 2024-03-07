@@ -43,6 +43,18 @@ pub enum TomlValue {
 }
 
 impl TomlValue {
+    pub fn int(value: i64) -> Self {
+        TomlValue::Int(value)
+    }
+
+    pub fn bool(value: bool) -> Self {
+        TomlValue::Bool(value)
+    }
+
+    pub fn string(value: &str) -> Self {
+        TomlValue::String(value.to_string())
+    }
+
     pub fn to_toml_value(&self) -> toml_edit::Value {
         match self {
             TomlValue::Int(value) => toml_edit::Value::Integer(Formatted::new(*value)),

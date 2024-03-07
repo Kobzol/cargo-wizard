@@ -24,9 +24,7 @@ pub fn prompt_confirm_diff(
 ) -> PromptResult<ConfirmDiffPromptResponse> {
     // Cargo.toml
     let orig_manifest_text = workspace.manifest.get_text();
-    workspace.manifest = workspace
-        .manifest
-        .apply_template(profile, template.profile)?;
+    workspace.manifest = workspace.manifest.apply_template(profile, &template)?;
     let new_manifest_text = workspace.manifest.get_text();
 
     let manifest_diff = render_diff(&orig_manifest_text, &new_manifest_text);

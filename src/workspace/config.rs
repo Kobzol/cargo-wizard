@@ -1,8 +1,7 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use crate::template::ConfigTemplate;
-use crate::ConfigItemId;
+use crate::{Template, TemplateItemId, TomlValue};
 use anyhow::Context;
 use toml_edit::{table, value, Array, Document, Formatted, Value};
 
@@ -36,7 +35,7 @@ impl CargoConfig {
         self.document.to_string()
     }
 
-    pub fn apply_template(mut self, template: ConfigTemplate) -> anyhow::Result<Self> {
+    pub fn apply_template(mut self, template: &Template) -> anyhow::Result<Self> {
         let build = self
             .document
             .entry("build")
@@ -48,9 +47,15 @@ impl CargoConfig {
         let rustflags: Vec<String> = template
             .items
             .iter()
-            .map(|(id, value)| match id {
-                ConfigItemId::TargetCpu => {
-                    format!("-Ctarget-cpu={value}")
+            .filter_map(|(id, value)| {
+                let TomlValue::String(value) = value else {
+                    return None;
+                };
+                match id {
+                    TemplateItemId::TargetCpuInstructionSet => {
+                        Some(format!("-Ctarget-cpu={value}"))
+                    }
+                    _ => None,
                 }
             })
             .collect();
@@ -108,14 +113,13 @@ mod tests {
 
     use toml_edit::Document;
 
-    use crate::template::ConfigTemplate;
     use crate::workspace::manifest::BuiltinProfile;
-    use crate::{CargoConfig, ConfigItemId, TemplateBuilder};
+    use crate::{CargoConfig, Template, TemplateBuilder, TemplateItemId, TomlValue};
 
     #[test]
     fn create_rustflags() {
-        let template = create_template(&[(ConfigItemId::TargetCpu, "native")]);
-        let config = create_empty_config().apply_template(template).unwrap();
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
+        let config = create_empty_config().apply_template(&template).unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
         [build]
         rustflags = ["-Ctarget-cpu=native"]
@@ -124,14 +128,14 @@ mod tests {
 
     #[test]
     fn append_to_array_rustflags() {
-        let template = create_template(&[(ConfigItemId::TargetCpu, "native")]);
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
         let config = create_config(
             r#"
 [build]
 rustflags = ["-Cbar=foo"]
 "#,
         );
-        let config = config.apply_template(template).unwrap();
+        let config = config.apply_template(&template).unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
     [build]
     rustflags = ["-Cbar=foo", "-Ctarget-cpu=native"]
@@ -140,14 +144,14 @@ rustflags = ["-Cbar=foo"]
 
     #[test]
     fn ignore_existing_entry() {
-        let template = create_template(&[(ConfigItemId::TargetCpu, "foo")]);
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "foo")]);
         let config = create_config(
             r#"
 [build]
 rustflags = ["-Ctarget-cpu=foo"]
 "#,
         );
-        let config = config.apply_template(template).unwrap();
+        let config = config.apply_template(&template).unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
         [build]
         rustflags = ["-Ctarget-cpu=foo"]
@@ -156,14 +160,14 @@ rustflags = ["-Ctarget-cpu=foo"]
 
     #[test]
     fn append_to_empty_string_rustflags() {
-        let template = create_template(&[(ConfigItemId::TargetCpu, "native")]);
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
         let config = create_config(
             r#"
 [build]
 rustflags = ""
 "#,
         );
-        let config = config.apply_template(template).unwrap();
+        let config = config.apply_template(&template).unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
             [build]
             rustflags = "-Ctarget-cpu=native"
@@ -172,14 +176,14 @@ rustflags = ""
 
     #[test]
     fn append_to_string_rustflags() {
-        let template = create_template(&[(ConfigItemId::TargetCpu, "native")]);
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
         let config = create_config(
             r#"
 [build]
 rustflags = "-Cfoo=bar"
 "#,
         );
-        let config = config.apply_template(template).unwrap();
+        let config = config.apply_template(&template).unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
         [build]
         rustflags = "-Cfoo=bar -Ctarget-cpu=native"
@@ -188,26 +192,26 @@ rustflags = "-Cfoo=bar"
 
     #[test]
     fn append_to_string_rustflags_keep_formatting() {
-        let template = create_template(&[(ConfigItemId::TargetCpu, "native")]);
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
         let config = create_config(
             r#"
 [build]
 rustflags = "-Cfoo=bar" # Foo
 "#,
         );
-        let config = config.apply_template(template).unwrap();
+        let config = config.apply_template(&template).unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
         [build]
         rustflags = "-Cfoo=bar -Ctarget-cpu=native" # Foo
         "###);
     }
 
-    fn create_template(items: &[(ConfigItemId, &str)]) -> ConfigTemplate {
+    fn create_template(items: &[(TemplateItemId, &str)]) -> Template {
         let mut builder = TemplateBuilder::new(BuiltinProfile::Release);
         for (id, value) in items {
-            builder = builder.config_item(*id, value.to_string())
+            builder = builder.item(*id, TomlValue::String(value.to_string()));
         }
-        builder.build().config
+        builder.build()
     }
 
     fn create_config(text: &str) -> CargoConfig {

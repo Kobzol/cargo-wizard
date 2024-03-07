@@ -17,9 +17,10 @@ pub struct CargoWorkspace {
 
 impl CargoWorkspace {
     pub fn apply_template(mut self, profile: &str, template: Template) -> anyhow::Result<Self> {
-        self.manifest = self.manifest.apply_template(profile, template.profile)?;
+        self.manifest = self.manifest.apply_template(profile, &template)?;
+        todo!();
         if let Some(config) = self.config {
-            self.config = Some(config.apply_template(template.config)?);
+            self.config = Some(config.apply_template(&template)?);
         }
 
         Ok(self)

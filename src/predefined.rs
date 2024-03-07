@@ -1,7 +1,7 @@
-use crate::template::ProfileItemId;
+use crate::template::TemplateItemId;
 use crate::toml::TomlValue;
 use crate::workspace::manifest::BuiltinProfile;
-use crate::{ConfigItemId, Template, TemplateBuilder};
+use crate::{Template, TemplateBuilder};
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 pub enum PredefinedTemplateKind {
@@ -26,32 +26,32 @@ impl PredefinedTemplateKind {
 /// Template that focuses on quick compile time.
 pub fn fast_compile_template() -> Template {
     TemplateBuilder::new(BuiltinProfile::Dev)
-        .profile_item(ProfileItemId::DebugInfo, TomlValue::Int(0))
+        .item(TemplateItemId::DebugInfo, TomlValue::int(0))
         .build()
 }
 
 /// Template that focuses on maximum runtime performance.
 pub fn fast_runtime_template() -> Template {
     TemplateBuilder::new(BuiltinProfile::Release)
-        .profile_item(ProfileItemId::Lto, TomlValue::Bool(true))
-        .profile_item(ProfileItemId::CodegenUnits, TomlValue::Int(1))
-        .profile_item(ProfileItemId::Panic, TomlValue::String("abort".to_string()))
-        .config_item(ConfigItemId::TargetCpu, "native".to_string())
+        .item(TemplateItemId::Lto, TomlValue::bool(true))
+        .item(TemplateItemId::CodegenUnits, TomlValue::int(1))
+        .item(TemplateItemId::Panic, TomlValue::string("abort"))
+        .item(
+            TemplateItemId::TargetCpuInstructionSet,
+            TomlValue::string("native"),
+        )
         .build()
 }
 
 /// Template that template focuses on minimal binary size.
 pub fn min_size_template() -> Template {
     TemplateBuilder::new(BuiltinProfile::Release)
-        .profile_item(ProfileItemId::DebugInfo, TomlValue::Int(0))
-        .profile_item(ProfileItemId::Strip, TomlValue::Bool(true))
-        .profile_item(ProfileItemId::Lto, TomlValue::Bool(true))
-        .profile_item(
-            ProfileItemId::OptimizationLevel,
-            TomlValue::String("z".to_string()),
-        )
-        .profile_item(ProfileItemId::CodegenUnits, TomlValue::Int(1))
-        .profile_item(ProfileItemId::Panic, TomlValue::String("abort".to_string()))
+        .item(TemplateItemId::DebugInfo, TomlValue::int(0))
+        .item(TemplateItemId::Strip, TomlValue::bool(true))
+        .item(TemplateItemId::Lto, TomlValue::bool(true))
+        .item(TemplateItemId::OptimizationLevel, TomlValue::string("z"))
+        .item(TemplateItemId::CodegenUnits, TomlValue::int(1))
+        .item(TemplateItemId::Panic, TomlValue::string("abort"))
         .build()
 }
 

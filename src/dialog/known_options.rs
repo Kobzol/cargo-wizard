@@ -1,4 +1,4 @@
-use cargo_wizard::{ProfileItemId, TomlValue};
+use cargo_wizard::{TemplateItemId, TomlValue};
 
 /// Known options from Cargo, containing descriptions and possible values.
 pub struct KnownCargoOptions;
@@ -6,12 +6,14 @@ pub struct KnownCargoOptions;
 #[derive(Copy, Clone)]
 pub enum TomlValueKind {
     Int,
+    String,
 }
 
 impl TomlValueKind {
     fn matches_value(&self, value: &TomlValue) -> bool {
         match (value, self) {
             (TomlValue::Int(_), TomlValueKind::Int) => true,
+            (TomlValue::String(_), TomlValueKind::String) => true,
             _ => false,
         }
     }
@@ -30,13 +32,16 @@ pub struct PossibleValueSet {
 
 impl PossibleValueSet {
     fn new(values: &[PossibleValue]) -> Self {
-        Self::new_with_custom(values, None)
-    }
-
-    fn new_with_custom(values: &[PossibleValue], custom_value: Option<TomlValueKind>) -> Self {
         Self {
             values: values.to_vec(),
-            custom_value,
+            custom_value: None,
+        }
+    }
+
+    fn new_with_custom(values: &[PossibleValue], custom_value: TomlValueKind) -> Self {
+        Self {
+            values: values.to_vec(),
+            custom_value: Some(custom_value),
         }
     }
 
@@ -61,20 +66,21 @@ impl PossibleValueSet {
 }
 
 impl KnownCargoOptions {
-    pub fn profile_ids() -> Vec<ProfileItemId> {
+    pub fn get_all_ids() -> Vec<TemplateItemId> {
         vec![
-            ProfileItemId::OptimizationLevel,
-            ProfileItemId::Lto,
-            ProfileItemId::CodegenUnits,
-            ProfileItemId::Panic,
-            ProfileItemId::DebugInfo,
-            ProfileItemId::Strip,
+            TemplateItemId::OptimizationLevel,
+            TemplateItemId::Lto,
+            TemplateItemId::CodegenUnits,
+            TemplateItemId::TargetCpuInstructionSet,
+            TemplateItemId::Panic,
+            TemplateItemId::DebugInfo,
+            TemplateItemId::Strip,
         ]
     }
 
-    pub fn profile_item_values(id: ProfileItemId) -> PossibleValueSet {
+    pub fn get_possible_values(id: TemplateItemId) -> PossibleValueSet {
         match id {
-            ProfileItemId::OptimizationLevel => PossibleValueSet::new(&[
+            TemplateItemId::OptimizationLevel => PossibleValueSet::new(&[
                 PossibleValue::new("No optimizations", TomlValue::Int(0)),
                 PossibleValue::new("Basic optimizations", TomlValue::Int(1)),
                 PossibleValue::new("Some optimizations", TomlValue::Int(2)),
@@ -88,21 +94,21 @@ impl KnownCargoOptions {
                     TomlValue::String("z".to_string()),
                 ),
             ]),
-            ProfileItemId::Lto => PossibleValueSet::new(&[
+            TemplateItemId::Lto => PossibleValueSet::new(&[
                 PossibleValue::new("Disable LTO", TomlValue::String("off".to_string())),
                 PossibleValue::new("Thin local LTO (default)", TomlValue::Bool(false)),
                 PossibleValue::new("Thin LTO", TomlValue::String("thin".to_string())),
                 PossibleValue::new("Fat LTO", TomlValue::Bool(true)),
             ]),
-            ProfileItemId::CodegenUnits => PossibleValueSet::new_with_custom(
+            TemplateItemId::CodegenUnits => PossibleValueSet::new_with_custom(
                 &[PossibleValue::new("1 CGU", TomlValue::Int(1))],
-                Some(TomlValueKind::Int),
+                TomlValueKind::Int,
             ),
-            ProfileItemId::Panic => PossibleValueSet::new(&[
+            TemplateItemId::Panic => PossibleValueSet::new(&[
                 PossibleValue::new("Unwind", TomlValue::String("unwind".to_string())),
                 PossibleValue::new("Abort", TomlValue::String("abort".to_string())),
             ]),
-            ProfileItemId::DebugInfo => PossibleValueSet::new(&[
+            TemplateItemId::DebugInfo => PossibleValueSet::new(&[
                 PossibleValue::new("Disable debuginfo", TomlValue::Bool(false)),
                 PossibleValue::new(
                     "Enable line directives",
@@ -115,7 +121,7 @@ impl KnownCargoOptions {
                 PossibleValue::new("Limited debuginfo", TomlValue::Int(1)),
                 PossibleValue::new("Full debuginfo", TomlValue::Bool(true)),
             ]),
-            ProfileItemId::Strip => PossibleValueSet::new(&[
+            TemplateItemId::Strip => PossibleValueSet::new(&[
                 PossibleValue::new("Do not strip anything", TomlValue::Bool(false)),
                 PossibleValue::new(
                     "Strip debug info",
@@ -124,6 +130,13 @@ impl KnownCargoOptions {
                 PossibleValue::new("Strip symbols", TomlValue::String("symbols".to_string())),
                 PossibleValue::new("Strip debug info and symbols", TomlValue::Bool(true)),
             ]),
+            TemplateItemId::TargetCpuInstructionSet => PossibleValueSet::new_with_custom(
+                &[PossibleValue::new(
+                    "Native (best for the local CPU)",
+                    TomlValue::string("native"),
+                )],
+                TomlValueKind::String,
+            ),
         }
     }
 }
@@ -159,8 +172,8 @@ mod tests {
 
     #[test]
     fn get_profile_id_possible_values() {
-        for id in KnownCargoOptions::profile_ids() {
-            assert!(!KnownCargoOptions::profile_item_values(id)
+        for id in KnownCargoOptions::get_all_ids() {
+            assert!(!KnownCargoOptions::get_possible_values(id)
                 .get_possible_values()
                 .is_empty());
         }
