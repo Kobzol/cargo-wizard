@@ -71,6 +71,7 @@ pub enum TemplateItemId {
     Panic,
     OptimizationLevel,
     CodegenBackend,
+    FrontendThreads,
     TargetCpuInstructionSet,
 }
 

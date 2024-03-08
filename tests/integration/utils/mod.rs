@@ -247,6 +247,7 @@ pub fn init_cargo_project() -> anyhow::Result<CargoProject> {
     let status = Command::new("cargo")
         .args(["new", "--bin", name])
         .current_dir(dir.path())
+        .stderr(Stdio::null())
         .status()?;
     assert!(status.success());
 

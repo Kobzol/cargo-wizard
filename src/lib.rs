@@ -14,6 +14,7 @@
 pub use predefined::*;
 pub use template::{Template, TemplateItemId, WizardOptions};
 pub use toml::TomlValue;
+pub use utils::get_core_count;
 pub use workspace::config::CargoConfig;
 pub use workspace::manifest::{resolve_manifest_path, BuiltinProfile, CargoManifest, Profile};
 pub use workspace::{parse_workspace, CargoWorkspace, ModificationResult, ModifiedWorkspace};
@@ -21,4 +22,5 @@ pub use workspace::{parse_workspace, CargoWorkspace, ModificationResult, Modifie
 mod predefined;
 mod template;
 mod toml;
+mod utils;
 mod workspace;

@@ -1,5 +1,6 @@
 use crate::template::{TemplateBuilder, TemplateItemId};
 use crate::toml::TomlValue;
+use crate::utils::get_core_count;
 use crate::workspace::manifest::BuiltinProfile;
 use crate::{Template, WizardOptions};
 
@@ -29,10 +30,15 @@ pub fn fast_compile_template(options: &WizardOptions) -> Template {
     let mut builder = TemplateBuilder::new(BuiltinProfile::Dev)
         .item(TemplateItemId::DebugInfo, TomlValue::int(0));
     if options.nightly_items_enabled() {
-        builder = builder.item(
-            TemplateItemId::CodegenBackend,
-            TomlValue::string("cranelift"),
-        );
+        builder = builder
+            .item(
+                TemplateItemId::CodegenBackend,
+                TomlValue::string("cranelift"),
+            )
+            .item(
+                TemplateItemId::FrontendThreads,
+                TomlValue::Int(get_core_count()),
+            )
     }
     builder.build()
 }

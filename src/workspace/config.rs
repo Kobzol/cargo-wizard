@@ -40,14 +40,23 @@ impl CargoConfig {
         let rustflags: Vec<String> = template
             .iter_items()
             .filter_map(|(id, value)| {
-                let TomlValue::String(value) = value else {
-                    return None;
+                let value = match value {
+                    TomlValue::String(value) => value.clone(),
+                    TomlValue::Int(value) => value.to_string(),
+                    TomlValue::Bool(value) => value.to_string(),
                 };
                 match id {
                     TemplateItemId::TargetCpuInstructionSet => {
                         Some(format!("-Ctarget-cpu={value}"))
                     }
-                    _ => None,
+                    TemplateItemId::FrontendThreads => Some(format!("-Zthreads={value}")),
+                    TemplateItemId::DebugInfo
+                    | TemplateItemId::Strip
+                    | TemplateItemId::Lto
+                    | TemplateItemId::CodegenUnits
+                    | TemplateItemId::Panic
+                    | TemplateItemId::OptimizationLevel
+                    | TemplateItemId::CodegenBackend => None,
                 }
             })
             .collect();

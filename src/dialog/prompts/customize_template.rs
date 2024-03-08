@@ -132,6 +132,7 @@ impl Display for ItemId {
             TemplateItemId::OptimizationLevel => "Optimization level",
             TemplateItemId::CodegenBackend => "Codegen backend",
             TemplateItemId::TargetCpuInstructionSet => "Target CPU instruction set",
+            TemplateItemId::FrontendThreads => "Amount of frontend threads",
         };
         f.write_str(description)
     }

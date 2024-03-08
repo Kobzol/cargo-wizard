@@ -282,12 +282,56 @@ fn dialog_codegen_backend_nightly_mark() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test]
+fn dialog_fast_compile_nightly() -> anyhow::Result<()> {
+    let project = init_cargo_project()?.disable_check_on_drop();
+
+    DialogBuilder::default()
+        .nightly()
+        .customize_item(
+            "Amount of frontend threads",
+            CustomValue::Custom("4".to_string()),
+        )
+        .run(&project)?;
+
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+    cargo-features = ["codegen-backend"]
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.dev]
+    debug = 0
+    codegen-backend = "cranelift"
+    "###);
+
+    insta::assert_snapshot!(project.read_config(), @r###"
+    [build]
+    rustflags = ["-Zthreads=4"]
+    "###);
+
+    Ok(())
+}
+
+enum CustomValue {
+    Constant(String),
+    Custom(String),
+}
+
+impl<'a> From<&'a str> for CustomValue {
+    fn from(value: &'a str) -> Self {
+        Self::Constant(value.to_string())
+    }
+}
+
 struct DialogBuilder {
     profile: String,
     created_profile: Option<String>,
     template: String,
+    nightly: bool,
     accept_diff: bool,
-    customized_items: Vec<(String, String)>,
+    customized_items: Vec<(String, CustomValue)>,
     final_checks: Vec<String>,
 }
 
@@ -297,6 +341,7 @@ impl Default for DialogBuilder {
             profile: "dev".to_string(),
             created_profile: None,
             template: "FastCompile".to_string(),
+            nightly: false,
             accept_diff: true,
             customized_items: vec![],
             final_checks: vec![],
@@ -305,13 +350,13 @@ impl Default for DialogBuilder {
 }
 
 impl DialogBuilder {
-    fn profile(mut self, name: &str) -> Self {
-        self.profile = name.to_string();
+    fn template(mut self, name: &str) -> Self {
+        self.template = name.to_string();
         self
     }
 
-    fn template(mut self, name: &str) -> Self {
-        self.template = name.to_string();
+    fn profile(mut self, name: &str) -> Self {
+        self.profile = name.to_string();
         self
     }
 
@@ -325,14 +370,18 @@ impl DialogBuilder {
         self.profile("release")
     }
 
+    fn nightly(mut self) -> Self {
+        self.nightly = true;
+        self
+    }
+
     fn accept_diff(mut self, value: bool) -> Self {
         self.accept_diff = value;
         self
     }
 
-    fn customize_item(mut self, name: &str, value: &str) -> Self {
-        self.customized_items
-            .push((name.to_string(), value.to_string()));
+    fn customize_item<V: Into<CustomValue>>(mut self, name: &str, value: V) -> Self {
+        self.customized_items.push((name.to_string(), value.into()));
         self
     }
 
@@ -342,7 +391,13 @@ impl DialogBuilder {
     }
 
     fn run(self, project: &CargoProject) -> anyhow::Result<()> {
-        let mut terminal = project.cmd(&[]).start_terminal()?;
+        let nightly = match self.nightly {
+            true => "on",
+            false => "off",
+        };
+        let mut terminal = project
+            .cmd(&[&format!("--nightly={nightly}")])
+            .start_terminal()?;
         // Select template
         terminal.expect("Select the template that you want to apply")?;
         terminal.select_line(&self.template)?;
@@ -357,7 +412,17 @@ impl DialogBuilder {
         // Customize template
         for (name, value) in self.customized_items {
             terminal.select_line(&name)?;
-            terminal.select_line(&value)?;
+            match value {
+                // Select from list
+                CustomValue::Constant(value) => {
+                    terminal.select_line(&value)?;
+                }
+                // Enter custom value
+                CustomValue::Custom(value) => {
+                    terminal.select_line("Custom value")?;
+                    terminal.line(&value)?;
+                }
+            }
         }
         // Confirm template
         terminal.key_enter()?;

@@ -1,4 +1,4 @@
-use cargo_wizard::{TemplateItemId, TomlValue};
+use cargo_wizard::{get_core_count, TemplateItemId, TomlValue};
 
 /// Known options from Cargo, containing descriptions and possible values.
 pub struct KnownCargoOptions;
@@ -77,20 +77,20 @@ impl MetadataBuilder {
         }
     }
 
-    fn value(mut self, description: &'static str, value: TomlValue) -> Self {
+    fn value(mut self, description: &str, value: TomlValue) -> Self {
         self.values.push(PossibleValue::new(description, value));
         self
     }
 
-    fn int(self, description: &'static str, value: i64) -> Self {
+    fn int(self, description: &str, value: i64) -> Self {
         self.value(description, TomlValue::Int(value))
     }
 
-    fn bool(self, description: &'static str, value: bool) -> Self {
+    fn bool(self, description: &str, value: bool) -> Self {
         self.value(description, TomlValue::Bool(value))
     }
 
-    fn string(self, description: &'static str, value: &str) -> Self {
+    fn string(self, description: &str, value: &str) -> Self {
         self.value(description, TomlValue::String(value.to_string()))
     }
 
@@ -112,10 +112,11 @@ impl KnownCargoOptions {
             TemplateItemId::Lto,
             TemplateItemId::CodegenUnits,
             TemplateItemId::TargetCpuInstructionSet,
-            TemplateItemId::CodegenBackend,
             TemplateItemId::Panic,
             TemplateItemId::DebugInfo,
             TemplateItemId::Strip,
+            TemplateItemId::CodegenBackend,
+            TemplateItemId::FrontendThreads,
         ]
     }
 
@@ -165,6 +166,14 @@ impl KnownCargoOptions {
                 .string("Cranelift", "cranelift")
                 .requires_nightly()
                 .build(),
+            TemplateItemId::FrontendThreads => {
+                let core_count = get_core_count();
+                MetadataBuilder::default()
+                    .int(&format!("{core_count}"), core_count)
+                    .requires_nightly()
+                    .custom_value(TomlValueKind::Int)
+                    .build()
+            }
         }
     }
 }
@@ -177,7 +186,7 @@ pub struct PossibleValue {
 }
 
 impl PossibleValue {
-    fn new(description: &'static str, value: TomlValue) -> Self {
+    fn new(description: &str, value: TomlValue) -> Self {
         Self {
             value,
             description: description.to_string(),
