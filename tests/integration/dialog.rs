@@ -89,8 +89,7 @@ debug = 1
     );
 
     let mut terminal = project.cmd(&[]).start_terminal()?;
-    terminal.key_enter()?;
-    terminal.expect("custom1")?;
+    terminal.select_line("custom1")?;
 
     Ok(())
 }
@@ -407,9 +406,6 @@ impl DialogBuilder {
         let mut terminal = project
             .cmd(&[&format!("--nightly={nightly}")])
             .start_terminal()?;
-        // Select template
-        terminal.expect("Select the template that you want to apply")?;
-        terminal.select_line(&self.template)?;
         // Select profile
         terminal.expect("Select the profile that you want to update/create")?;
         terminal.select_line(&self.profile)?;
@@ -417,6 +413,9 @@ impl DialogBuilder {
             terminal.expect("Select profile name")?;
             terminal.line(custom_profile)?;
         }
+        // Select template
+        terminal.expect("Select the template that you want to apply")?;
+        terminal.select_line(&self.template)?;
         terminal.expect("Select items to modify or confirm the template")?;
         // Customize template
         for (name, value) in self.customized_items {

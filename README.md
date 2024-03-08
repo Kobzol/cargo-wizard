@@ -35,7 +35,7 @@ $ cargo install cargo-wizard
     ```
 - Non-interactive mode (directly apply a predefined template to your Cargo workspace):
     ```bash
-    $ cargo wizard apply <template> <profile>
+    $ cargo wizard apply <profile> <template>
     # For example, apply `fast-runtime` template to the `dist` profile
     $ cargo wizard apply fast-runtime dist
     ```

@@ -89,11 +89,11 @@ impl FromStr for ProfileArg {
 }
 
 #[derive(clap::Parser, Debug)]
-struct ProfileArgs {
-    /// Template that will be applied to the selected Cargo profile.
-    template: PredefinedTemplateKind,
+struct ApplyArgs {
     /// Cargo profile that should be created or modified.
     profile: ProfileArg,
+    /// Template that will be applied to the selected Cargo profile.
+    template: PredefinedTemplateKind,
 }
 
 #[derive(clap::Parser, Debug)]
@@ -101,7 +101,7 @@ enum SubCommand {
     /// Apply a predefined template to the selected profile.
     Apply {
         #[clap(flatten)]
-        args: ProfileArgs,
+        args: ApplyArgs,
         /// Path to a Cargo.toml manifest.
         /// If not specified, it will be resolved to the current Cargo workspace.
         #[clap(long)]
