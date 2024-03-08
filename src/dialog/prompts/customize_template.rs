@@ -137,6 +137,7 @@ impl Display for ItemId {
             TemplateItemId::CodegenBackend => "Codegen backend",
             TemplateItemId::TargetCpuInstructionSet => "Target CPU instruction set",
             TemplateItemId::FrontendThreads => "Amount of frontend threads",
+            TemplateItemId::Linker => "Linker",
         };
         f.write_str(description)
     }

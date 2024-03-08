@@ -84,7 +84,7 @@ pub fn on_template_applied(
         let channel = if requires_nightly { "+nightly " } else { "" };
 
         println!(
-            "❗ Do not forget to run `{}` to use the selected profile.",
+            "⚠️  Do not forget to run `{}` to use the selected profile.",
             utils::command_style().apply_to(format!("cargo {channel}<cmd> {flag}"))
         );
     }
@@ -92,15 +92,24 @@ pub fn on_template_applied(
         == Some(&TomlValue::String("cranelift".to_string()))
     {
         println!(
-            "❗ Do not forget to install the cranelift component using `{}`.",
+            "⚠️  Do not forget to install the cranelift component using `{}`.",
             utils::command_style().apply_to(
                 "rustup component add rustc-codegen-cranelift-preview --toolchain nightly"
             )
         );
     }
+    if let Some(linker) = template
+        .get_item(TemplateItemId::Linker)
+        .and_then(|v| v.to_toml_value().as_str().map(|s| s.to_string()))
+    {
+        println!(
+            "⚠️  Do not forget to install the linker, e.g. using `{}`.",
+            utils::command_style().apply_to(format!("sudo apt install {linker}"))
+        );
+    }
 
     if requires_nightly {
-        println!("❗ You will have to use a nightly compiler.");
+        println!("⚠️  You will have to use a nightly compiler.");
     }
 
     if let PredefinedTemplateKind::FastRuntime = template_kind {

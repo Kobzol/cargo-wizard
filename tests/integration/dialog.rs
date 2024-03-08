@@ -16,17 +16,21 @@ fn dialog_fast_compile_to_dev() -> anyhow::Result<()> {
     debug = 0
     "###);
 
+    insta::assert_snapshot!(project.read_config(), @r###"
+    [build]
+    rustflags = ["-Clink-arg=-fuse-ld=lld"]
+    "###);
+
     Ok(())
 }
 
 #[test]
-fn dialog_fast_compile_to_release() -> anyhow::Result<()> {
+fn dialog_min_size_to_release() -> anyhow::Result<()> {
     let project = init_cargo_project()?;
 
-    apply_profile(&project, "FastCompile", "release")?;
+    apply_profile(&project, "MinSize", "release")?;
 
     insta::assert_snapshot!(project.read_manifest(), @r###"
-
     [package]
     name = "foo"
     version = "0.1.0"
@@ -34,6 +38,11 @@ fn dialog_fast_compile_to_release() -> anyhow::Result<()> {
 
     [profile.release]
     debug = 0
+    strip = true
+    lto = true
+    opt-level = "z"
+    codegen-units = 1
+    panic = "abort"
     "###);
 
     assert!(!project.file_exists(project.config_path()));
@@ -308,7 +317,7 @@ fn dialog_fast_compile_nightly() -> anyhow::Result<()> {
 
     insta::assert_snapshot!(project.read_config(), @r###"
     [build]
-    rustflags = ["-Zthreads=4"]
+    rustflags = ["-Clink-arg=-fuse-ld=lld", "-Zthreads=4"]
     "###);
 
     Ok(())

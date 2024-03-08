@@ -181,6 +181,7 @@ impl KnownCargoOptions {
             TemplateItemId::Panic,
             TemplateItemId::DebugInfo,
             TemplateItemId::Strip,
+            TemplateItemId::Linker,
             TemplateItemId::CodegenBackend,
             TemplateItemId::FrontendThreads,
         ]
@@ -239,6 +240,10 @@ impl KnownCargoOptions {
                 .int(&format!("{}", self.core_count), self.core_count)
                 .requires_nightly()
                 .custom_value(TomlValueKind::Int)
+                .build(),
+            TemplateItemId::Linker => MetadataBuilder::default()
+                .string("LLD", "lld")
+                .string("MOLD", "mold")
                 .build(),
         }
     }

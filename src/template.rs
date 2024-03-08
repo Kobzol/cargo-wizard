@@ -64,6 +64,7 @@ impl TemplateBuilder {
 /// Identifier of a specific item of a template.
 #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
 pub enum TemplateItemId {
+    // Do not forget to modify CargoKnownOptions when adding new variants to this enum
     DebugInfo,
     Strip,
     Lto,
@@ -73,6 +74,7 @@ pub enum TemplateItemId {
     CodegenBackend,
     FrontendThreads,
     TargetCpuInstructionSet,
+    Linker,
 }
 
 /// Describes options for applying templates

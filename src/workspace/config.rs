@@ -50,6 +50,7 @@ impl CargoConfig {
                         Some(format!("-Ctarget-cpu={value}"))
                     }
                     TemplateItemId::FrontendThreads => Some(format!("-Zthreads={value}")),
+                    TemplateItemId::Linker => Some(format!("-Clink-arg=-fuse-ld={value}")),
                     TemplateItemId::DebugInfo
                     | TemplateItemId::Strip
                     | TemplateItemId::Lto
