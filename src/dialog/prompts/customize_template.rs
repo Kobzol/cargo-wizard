@@ -53,15 +53,25 @@ fn prompt_choose_item_or_confirm_template(
 ) -> PromptResult<ChooseItemResponse> {
     enum Row<'a> {
         Confirm,
-        Item { id: ItemId, template: &'a Template },
+        Item {
+            id: ItemId,
+            metadata: TemplateItemMedata,
+            template: &'a Template,
+        },
     }
 
     impl<'a> Display for Row<'a> {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             match self {
                 Row::Confirm => f.write_str("<Confirm>"),
-                Row::Item { id, template } => {
-                    write!(f, "{:<30}", id.to_string())?;
+                Row::Item {
+                    id,
+                    metadata,
+                    template,
+                } => {
+                    let is_nightly = metadata.requires_nightly();
+                    let name = format!("{id}{}", if is_nightly { " *" } else { "" });
+                    write!(f, "{name:<30}")?;
 
                     if let Some(value) = template.get_item(id.0) {
                         let val = format!("[{}]", TomlValueDisplay(&value));
@@ -80,11 +90,16 @@ fn prompt_choose_item_or_confirm_template(
                 .iter()
                 .map(|&id| Row::Item {
                     id: ItemId(id),
+                    metadata: KnownCargoOptions::get_metadata(id),
                     template,
                 }),
         )
         .collect();
     let answer = Select::new("Select items to modify or confirm the template:", rows)
+        .with_page_size(10)
+        .with_help_message(
+            "↑↓ to move, enter to select, type to filter\n* Requires nightly compiler",
+        )
         .with_render_config(create_render_config(cli_config))
         .prompt()?;
     Ok(match answer {

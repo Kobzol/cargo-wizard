@@ -270,6 +270,18 @@ fn dialog_check_nightly_output() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test]
+fn dialog_codegen_backend_nightly_mark() -> anyhow::Result<()> {
+    let project = init_cargo_project()?.disable_check_on_drop();
+
+    DialogBuilder::default()
+        .profile_release()
+        .customize_item("Codegen backend *", "Cranelift")
+        .run(&project)?;
+
+    Ok(())
+}
+
 struct DialogBuilder {
     profile: String,
     created_profile: Option<String>,
