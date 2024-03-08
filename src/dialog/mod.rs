@@ -2,7 +2,7 @@ use anyhow::Context;
 
 use cargo_wizard::{
     parse_workspace, resolve_manifest_path, BuiltinProfile, PredefinedTemplateKind, Profile,
-    Template, WizardOptions,
+    Template, TemplateItemId, TomlValue, WizardOptions,
 };
 pub use error::{DialogError, PromptResult};
 
@@ -86,6 +86,16 @@ pub fn on_template_applied(
         println!(
             "❗ Do not forget to run `{}` to use the selected profile.",
             utils::command_style().apply_to(format!("cargo {channel}<cmd> {flag}"))
+        );
+    }
+    if template.get_item(TemplateItemId::CodegenBackend)
+        == Some(&TomlValue::String("cranelift".to_string()))
+    {
+        println!(
+            "❗ Do not forget to install the cranelift component using `{}`.",
+            utils::command_style().apply_to(
+                "rustup component add rustc-codegen-cranelift-preview --toolchain nightly"
+            )
         );
     }
 
