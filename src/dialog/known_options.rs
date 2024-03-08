@@ -237,7 +237,10 @@ impl KnownCargoOptions {
                 .requires_nightly()
                 .build(),
             TemplateItemId::FrontendThreads => MetadataBuilder::default()
-                .int(&format!("{}", self.core_count), self.core_count)
+                .int(
+                    &format!("{} (local core count)", self.core_count),
+                    self.core_count,
+                )
                 .requires_nightly()
                 .custom_value(TomlValueKind::Int)
                 .build(),
