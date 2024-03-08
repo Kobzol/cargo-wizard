@@ -75,5 +75,11 @@ fn profile_render_config(cli_config: &CliConfig) -> RenderConfig<'static> {
     render_config.selected_option = render_config
         .selected_option
         .map(|s| s.with_fg(Color::DarkGreen));
+    if cli_config.colors_enabled() {
+        render_config.highlighted_option_prefix.style = render_config
+            .highlighted_option_prefix
+            .style
+            .with_fg(Color::DarkGreen);
+    }
     render_config
 }
