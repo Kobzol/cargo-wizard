@@ -406,7 +406,7 @@ impl DialogBuilder {
         terminal.select_line(&self.profile)?;
         if let Some(ref custom_profile) = self.created_profile {
             terminal.expect("Select profile name")?;
-            terminal.line(&custom_profile)?;
+            terminal.line(custom_profile)?;
         }
         terminal.expect("Select items to modify or confirm the template")?;
         // Customize template

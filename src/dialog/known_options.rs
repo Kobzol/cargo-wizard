@@ -133,7 +133,7 @@ impl MetadataBuilder {
 fn get_target_cpu_list() -> anyhow::Result<Vec<String>> {
     let cmd = env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc"));
     let output = Command::new(cmd)
-        .args(&["--print", "target-cpus"])
+        .args(["--print", "target-cpus"])
         .stdout(Stdio::piped())
         .spawn()
         .context("Cannot spawn `rustc` to find `target-cpus` list")?

@@ -78,7 +78,7 @@ fn prompt_choose_item_or_confirm_template(
                     write!(f, "{name:<30}")?;
 
                     if let Some(value) = template.get_item(id.0) {
-                        let val = format!("[{}]", TomlValueDisplay(&value));
+                        let val = format!("[{}]", TomlValueDisplay(value));
                         write!(f, "{val:>10}")
                     } else {
                         f.write_str("         -")
@@ -197,7 +197,7 @@ fn prompt_select_value_for_item(
                     f,
                     "{:<40} {}",
                     value.description(),
-                    value.value().to_toml_value().to_string(),
+                    value.value().to_toml_value(),
                 ),
                 Row::CustomValue {
                     custom_value,
@@ -226,7 +226,7 @@ fn prompt_select_value_for_item(
 
     let mut rows: Vec<_> = value_set
         .get_possible_values()
-        .into_iter()
+        .iter()
         .cloned()
         .map(Row::ConstantValue)
         .collect();

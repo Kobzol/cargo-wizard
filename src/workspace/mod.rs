@@ -25,7 +25,7 @@ impl CargoWorkspace {
         template: &Template,
     ) -> anyhow::Result<ModifiedWorkspace> {
         let old_manifest = self.manifest.clone();
-        let new_manifest = self.manifest.apply_template(profile, &template)?;
+        let new_manifest = self.manifest.apply_template(profile, template)?;
         let manifest = if old_manifest.get_text() == new_manifest.get_text() {
             ModificationResult::NoChange
         } else {
@@ -36,7 +36,7 @@ impl CargoWorkspace {
         };
 
         let old_config = self.config.clone();
-        let new_config = self.config.apply_template(&template)?;
+        let new_config = self.config.apply_template(template)?;
         let config = if old_config.get_text() == new_config.get_text() {
             ModificationResult::NoChange
         } else {
