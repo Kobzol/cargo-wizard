@@ -238,20 +238,17 @@ fn prompt_select_value_for_item(
         });
     }
 
-    rows.push(Row::Unset);
-    rows.push(Row::Cancel);
-
-    let mut default_index = value_set.get_possible_values().len();
-    if value_set.get_custom_value().is_some() {
-        default_index += 1;
+    if item_id.selected_value(template).is_some() {
+        rows.push(Row::Unset);
     }
+    rows.push(Row::Cancel);
 
     let index = match selected_value {
         SelectedPossibleValue::Constant { index, .. } => index,
         // Select "Custom value" as a default if a custom value is selected
         SelectedPossibleValue::Custom { .. } => value_set.get_possible_values().len(),
         // Select "Go back" as a default if no value is selected
-        SelectedPossibleValue::None => default_index,
+        SelectedPossibleValue::None => rows.len() - 1,
     };
 
     let selected = Select::new(&format!("Select value for `{}`:", item_id), rows)
@@ -267,7 +264,7 @@ fn prompt_select_value_for_item(
                 let value = prompt_enter_custom_value(cli_config, custom_value)?;
                 SelectItemValueResponse::Set(value)
             }
-            Row::Unset => SelectItemValueResponse::Unset,
+            Row::Unset { .. } => SelectItemValueResponse::Unset,
             Row::Cancel => SelectItemValueResponse::Cancel,
         },
         None => SelectItemValueResponse::Cancel,
