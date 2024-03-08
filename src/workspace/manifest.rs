@@ -159,16 +159,6 @@ impl CargoManifest {
                 {
                     features.push("codegen-backend");
                 }
-                // Add a line after the features if there is not one already
-                if features
-                    .decor()
-                    .suffix()
-                    .and_then(|s| s.as_str())
-                    .unwrap_or_default()
-                    .is_empty()
-                {
-                    features.decor_mut().set_suffix("\n");
-                }
             }
         }
 

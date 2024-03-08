@@ -210,7 +210,6 @@ fn dialog_codegen_backend_add_cargo_features() -> anyhow::Result<()> {
 
     insta::assert_snapshot!(project.read_manifest(), @r###"
     cargo-features = ["codegen-backend"]
-
     [package]
     name = "foo"
     version = "0.1.0"
@@ -243,7 +242,6 @@ edition = "2021"
 
     insta::assert_snapshot!(project.read_manifest(), @r###"
     cargo-features = ["codegen-backend"]
-
 
     [package]
     name = "foo"
