@@ -10,7 +10,9 @@ use cargo_wizard::{
 };
 
 use crate::cli::CliConfig;
-use crate::dialog::{on_template_applied, profile_from_str, run_root_dialog, DialogError};
+use crate::dialog::{
+    on_template_applied, profile_from_str, run_root_dialog, DialogError, KnownCargoOptions,
+};
 
 mod cli;
 mod dialog;
@@ -135,6 +137,8 @@ fn main() -> anyhow::Result<()> {
     match args {
         Args::Wizard(root_args) => {
             let options = options_from_args(&root_args);
+            let cargo_options =
+                KnownCargoOptions::create().context("Cannot get known Cargo options")?;
             let cli_config = setup_cli(root_args.colors);
             match root_args.subcmd {
                 Some(SubCommand::Apply {
@@ -151,10 +155,10 @@ fn main() -> anyhow::Result<()> {
                     let template = args.template.build_template(&options);
                     let modified = workspace.apply_template(&args.profile.0, &template)?;
                     modified.write()?;
-                    on_template_applied(args.template, &template, &args.profile.0);
+                    on_template_applied(&cargo_options, args.template, &template, &args.profile.0);
                 }
                 None => {
-                    if let Err(error) = run_root_dialog(cli_config, options) {
+                    if let Err(error) = run_root_dialog(cli_config, cargo_options, options) {
                         match error {
                             DialogError::Interrupted => {
                                 // Print an empty line when the app is interrupted, to avoid

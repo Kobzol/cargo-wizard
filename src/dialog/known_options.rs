@@ -1,8 +1,5 @@
 use cargo_wizard::{get_core_count, TemplateItemId, TomlValue};
 
-/// Known options from Cargo, containing descriptions and possible values.
-pub struct KnownCargoOptions;
-
 #[derive(Copy, Clone)]
 pub enum TomlValueKind {
     Int,
@@ -105,7 +102,17 @@ impl MetadataBuilder {
     }
 }
 
+/// Known options from Cargo, containing descriptions and possible values.
+pub struct KnownCargoOptions {
+    core_count: i64,
+}
+
 impl KnownCargoOptions {
+    pub fn create() -> anyhow::Result<Self> {
+        let core_count = get_core_count();
+        Ok(Self { core_count })
+    }
+
     pub fn get_all_ids() -> Vec<TemplateItemId> {
         vec![
             TemplateItemId::OptimizationLevel,
@@ -120,7 +127,7 @@ impl KnownCargoOptions {
         ]
     }
 
-    pub fn get_metadata(id: TemplateItemId) -> TemplateItemMedata {
+    pub fn get_metadata(&self, id: TemplateItemId) -> TemplateItemMedata {
         match id {
             TemplateItemId::OptimizationLevel => MetadataBuilder::default()
                 .int("No optimizations", 0)
@@ -166,14 +173,11 @@ impl KnownCargoOptions {
                 .string("Cranelift", "cranelift")
                 .requires_nightly()
                 .build(),
-            TemplateItemId::FrontendThreads => {
-                let core_count = get_core_count();
-                MetadataBuilder::default()
-                    .int(&format!("{core_count}"), core_count)
-                    .requires_nightly()
-                    .custom_value(TomlValueKind::Int)
-                    .build()
-            }
+            TemplateItemId::FrontendThreads => MetadataBuilder::default()
+                .int(&format!("{}", self.core_count), self.core_count)
+                .requires_nightly()
+                .custom_value(TomlValueKind::Int)
+                .build(),
         }
     }
 }
@@ -209,10 +213,9 @@ mod tests {
 
     #[test]
     fn get_profile_id_possible_values() {
+        let options = KnownCargoOptions::create().unwrap();
         for id in KnownCargoOptions::get_all_ids() {
-            assert!(!KnownCargoOptions::get_metadata(id)
-                .get_possible_values()
-                .is_empty());
+            assert!(!options.get_metadata(id).get_possible_values().is_empty());
         }
     }
 }

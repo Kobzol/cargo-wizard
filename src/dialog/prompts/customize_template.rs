@@ -17,15 +17,16 @@ use crate::dialog::PromptResult;
 /// Customize the properties of a template, by choosing or modifying selected items.
 pub fn prompt_customize_template(
     cli_config: &CliConfig,
+    options: &KnownCargoOptions,
     mut template: Template,
 ) -> PromptResult<Template> {
     loop {
-        match prompt_choose_item_or_confirm_template(cli_config, &template)? {
+        match prompt_choose_item_or_confirm_template(cli_config, options, &template)? {
             ChooseItemResponse::ConfirmTemplate => {
                 break;
             }
             ChooseItemResponse::ModifyItem(id) => {
-                match prompt_select_value_for_item(cli_config, &template, id)? {
+                match prompt_select_value_for_item(cli_config, options, &template, id)? {
                     SelectItemValueResponse::Set(value) => {
                         template.insert_item(id.0, value);
                     }
@@ -49,6 +50,7 @@ enum ChooseItemResponse {
 /// or confirm the template.
 fn prompt_choose_item_or_confirm_template(
     cli_config: &CliConfig,
+    options: &KnownCargoOptions,
     template: &Template,
 ) -> PromptResult<ChooseItemResponse> {
     enum Row<'a> {
@@ -90,7 +92,7 @@ fn prompt_choose_item_or_confirm_template(
                 .iter()
                 .map(|&id| Row::Item {
                     id: ItemId(id),
-                    metadata: KnownCargoOptions::get_metadata(id),
+                    metadata: options.get_metadata(id),
                     template,
                 }),
         )
@@ -112,8 +114,8 @@ fn prompt_choose_item_or_confirm_template(
 struct ItemId(TemplateItemId);
 
 impl ItemId {
-    fn value_set(&self) -> TemplateItemMedata {
-        KnownCargoOptions::get_metadata(self.0)
+    fn value_set(&self, options: &KnownCargoOptions) -> TemplateItemMedata {
+        options.get_metadata(self.0)
     }
 
     fn selected_value(&self, template: &Template) -> Option<TomlValue> {
@@ -173,6 +175,7 @@ enum SelectItemValueResponse {
 /// is already selected.
 fn prompt_select_value_for_item(
     cli_config: &CliConfig,
+    options: &KnownCargoOptions,
     template: &Template,
     item_id: ItemId,
 ) -> PromptResult<SelectItemValueResponse> {
@@ -212,7 +215,7 @@ fn prompt_select_value_for_item(
         }
     }
 
-    let value_set = item_id.value_set();
+    let value_set = item_id.value_set(options);
     let selected_value = item_id.selected_value(template);
     let selected_value = selected_value
         .clone()

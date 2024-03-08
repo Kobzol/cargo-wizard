@@ -17,10 +17,14 @@ mod known_options;
 mod prompts;
 mod utils;
 
-use crate::dialog::known_options::KnownCargoOptions;
+pub use crate::dialog::known_options::KnownCargoOptions;
 pub use utils::profile_from_str;
 
-pub fn run_root_dialog(cli_config: CliConfig, options: WizardOptions) -> PromptResult<()> {
+pub fn run_root_dialog(
+    cli_config: CliConfig,
+    cargo_options: KnownCargoOptions,
+    options: WizardOptions,
+) -> PromptResult<()> {
     let manifest_path = resolve_manifest_path().context("Cannot resolve Cargo.toml path")?;
     let workspace = parse_workspace(&manifest_path)?;
     let template_kind = prompt_select_template(&cli_config)?;
@@ -33,13 +37,13 @@ pub fn run_root_dialog(cli_config: CliConfig, options: WizardOptions) -> PromptR
     let profile = prompt_select_profile(&cli_config, existing_profiles)?;
 
     let template = template_kind.build_template(&options);
-    let template = prompt_customize_template(&cli_config, template)?;
+    let template = prompt_customize_template(&cli_config, &cargo_options, template)?;
 
     let diff_result = prompt_confirm_diff(&cli_config, workspace, &profile, &template)?;
     match diff_result {
         ConfirmDiffPromptResponse::Accepted(workspace) => {
             workspace.write()?;
-            on_template_applied(template_kind, &template, &profile);
+            on_template_applied(&cargo_options, template_kind, &template, &profile);
         }
         ConfirmDiffPromptResponse::Denied => {}
         ConfirmDiffPromptResponse::NoDiff => {
@@ -51,6 +55,7 @@ pub fn run_root_dialog(cli_config: CliConfig, options: WizardOptions) -> PromptR
 }
 
 pub fn on_template_applied(
+    options: &KnownCargoOptions,
     template_kind: PredefinedTemplateKind,
     template: &Template,
     profile: &Profile,
@@ -69,7 +74,7 @@ pub fn on_template_applied(
     let requires_nightly = template
         .iter_items()
         .map(|(id, _)| id)
-        .any(|id| KnownCargoOptions::get_metadata(id).requires_nightly());
+        .any(|id| options.get_metadata(id).requires_nightly());
     let profile_flag = match profile {
         Profile::Builtin(BuiltinProfile::Dev) => None,
         Profile::Builtin(BuiltinProfile::Release) => Some("--release".to_string()),
