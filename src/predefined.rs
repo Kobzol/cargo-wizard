@@ -1,7 +1,7 @@
 use crate::template::{TemplateBuilder, TemplateItemId};
 use crate::toml::TomlValue;
 use crate::workspace::manifest::BuiltinProfile;
-use crate::Template;
+use crate::{Template, WizardOptions};
 
 /// Enumeration of predefined templates.
 #[derive(clap::ValueEnum, Clone, Debug)]
@@ -15,9 +15,9 @@ pub enum PredefinedTemplateKind {
 }
 
 impl PredefinedTemplateKind {
-    pub fn build_template(&self) -> Template {
+    pub fn build_template(&self, options: &WizardOptions) -> Template {
         match self {
-            PredefinedTemplateKind::FastCompile => fast_compile_template(),
+            PredefinedTemplateKind::FastCompile => fast_compile_template(options),
             PredefinedTemplateKind::FastRuntime => fast_runtime_template(),
             PredefinedTemplateKind::MinSize => min_size_template(),
         }
@@ -25,10 +25,16 @@ impl PredefinedTemplateKind {
 }
 
 /// Template that focuses on quick compile time.
-pub fn fast_compile_template() -> Template {
-    TemplateBuilder::new(BuiltinProfile::Dev)
-        .item(TemplateItemId::DebugInfo, TomlValue::int(0))
-        .build()
+pub fn fast_compile_template(options: &WizardOptions) -> Template {
+    let mut builder = TemplateBuilder::new(BuiltinProfile::Dev)
+        .item(TemplateItemId::DebugInfo, TomlValue::int(0));
+    if options.nightly_items_enabled() {
+        builder = builder.item(
+            TemplateItemId::CodegenBackend,
+            TomlValue::string("cranelift"),
+        );
+    }
+    builder.build()
 }
 
 /// Template that focuses on maximum runtime performance.
@@ -59,11 +65,11 @@ pub fn min_size_template() -> Template {
 /// Test that the predefined templates can be created without panicking.
 #[cfg(test)]
 mod tests {
-    use crate::{fast_compile_template, fast_runtime_template, min_size_template};
+    use crate::{fast_compile_template, fast_runtime_template, min_size_template, WizardOptions};
 
     #[test]
     fn create_fast_compile_template() {
-        fast_compile_template();
+        fast_compile_template(&WizardOptions::default());
     }
 
     #[test]

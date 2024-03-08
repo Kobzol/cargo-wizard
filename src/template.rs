@@ -73,3 +73,21 @@ pub enum TemplateItemId {
     CodegenBackend,
     TargetCpuInstructionSet,
 }
+
+/// Describes options for applying templates
+#[derive(Default)]
+pub struct WizardOptions {
+    /// Include template items that require a nightly compiler.
+    nightly_items: bool,
+}
+
+impl WizardOptions {
+    pub fn nightly_items_enabled(&self) -> bool {
+        self.nightly_items
+    }
+
+    pub fn with_nightly_items(mut self) -> Self {
+        self.nightly_items = true;
+        self
+    }
+}

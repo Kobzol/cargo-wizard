@@ -2,7 +2,7 @@ use anyhow::Context;
 
 use cargo_wizard::{
     parse_workspace, resolve_manifest_path, BuiltinProfile, PredefinedTemplateKind, Profile,
-    Template,
+    Template, WizardOptions,
 };
 pub use error::{DialogError, PromptResult};
 
@@ -20,7 +20,7 @@ mod utils;
 use crate::dialog::known_options::KnownCargoOptions;
 pub use utils::profile_from_str;
 
-pub fn run_root_dialog(cli_config: CliConfig) -> PromptResult<()> {
+pub fn run_root_dialog(cli_config: CliConfig, options: WizardOptions) -> PromptResult<()> {
     let manifest_path = resolve_manifest_path().context("Cannot resolve Cargo.toml path")?;
     let workspace = parse_workspace(&manifest_path)?;
     let template_kind = prompt_select_template(&cli_config)?;
@@ -32,7 +32,7 @@ pub fn run_root_dialog(cli_config: CliConfig) -> PromptResult<()> {
         .collect();
     let profile = prompt_select_profile(&cli_config, existing_profiles)?;
 
-    let template = template_kind.build_template();
+    let template = template_kind.build_template(&options);
     let template = prompt_customize_template(&cli_config, template)?;
 
     let diff_result = prompt_confirm_diff(&cli_config, workspace, &profile, &template)?;

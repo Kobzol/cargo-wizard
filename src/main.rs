@@ -4,7 +4,9 @@ use std::str::FromStr;
 use anyhow::Context;
 use clap::Parser;
 
-use cargo_wizard::{parse_workspace, resolve_manifest_path, PredefinedTemplateKind, Profile};
+use cargo_wizard::{
+    parse_workspace, resolve_manifest_path, PredefinedTemplateKind, Profile, WizardOptions,
+};
 
 use crate::cli::CliConfig;
 use crate::dialog::{on_template_applied, profile_from_str, run_root_dialog, DialogError};
@@ -93,14 +95,15 @@ fn main() -> anyhow::Result<()> {
                             resolve_manifest_path().context("Cannot resolve Cargo.toml path")?
                         }
                     };
+                    let options = WizardOptions::default();
                     let workspace = parse_workspace(&manifest_path)?;
-                    let template = args.template.build_template();
+                    let template = args.template.build_template(&options);
                     let modified = workspace.apply_template(&args.profile.0, &template)?;
                     modified.write()?;
                     on_template_applied(args.template, &template, &args.profile.0);
                 }
                 None => {
-                    if let Err(error) = run_root_dialog(cli_config) {
+                    if let Err(error) = run_root_dialog(cli_config, WizardOptions::default()) {
                         match error {
                             DialogError::Interrupted => {
                                 // Print an empty line when the app is interrupted, to avoid
