@@ -38,9 +38,9 @@ $ cargo install cargo-wizard
     ```
 - Non-interactive mode (directly apply a predefined template to your Cargo workspace):
     ```bash
-    $ cargo wizard apply <profile> <template>
+    $ cargo wizard apply <template> <profile>
     # For example, apply `fast-runtime` template to the `dist` profile
-    $ cargo wizard apply dist fast-runtime
+    $ cargo wizard apply fast-runtime dist
     ```
 
 > You can enable profile/config options that require a nightly compiler by running `cargo-wizard` with a nightly Cargo

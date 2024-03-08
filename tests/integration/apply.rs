@@ -17,8 +17,8 @@ edition = "2021"
     project
         .cmd(&[
             "apply",
-            "dev",
             "fast-compile",
+            "dev",
             "--nightly=off",
             "--manifest-path",
             manifest_path,
@@ -60,7 +60,7 @@ members = ["bar"]
     );
 
     project
-        .cmd(&["apply", "dev", "fast-compile", "--nightly=off"])
+        .cmd(&["apply", "fast-compile", "dev", "--nightly=off"])
         .cwd(&project.path("bar"))
         .run()?
         .assert_ok();
@@ -269,7 +269,7 @@ fn apply_min_size_template() -> anyhow::Result<()> {
 
 fn apply(project: &CargoProject, profile: &str, template: &str) -> anyhow::Result<()> {
     project
-        .cmd(&["apply", profile, template, "--nightly=off"])
+        .cmd(&["apply", template, profile, "--nightly=off"])
         .run()?
         .assert_ok();
     Ok(())

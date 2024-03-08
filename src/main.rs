@@ -90,10 +90,10 @@ impl FromStr for ProfileArg {
 
 #[derive(clap::Parser, Debug)]
 struct ApplyArgs {
-    /// Cargo profile that should be created or modified.
-    profile: ProfileArg,
     /// Template that will be applied to the selected Cargo profile.
     template: PredefinedTemplateKind,
+    /// Cargo profile that should be created or modified.
+    profile: ProfileArg,
 }
 
 #[derive(clap::Parser, Debug)]

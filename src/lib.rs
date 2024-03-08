@@ -2,7 +2,7 @@
 //!
 //! Non-interactive command-line usage:
 //! ```bash
-//! cargo wizard apply <profile> <template>
+//! cargo wizard apply <template> <profile> [--nightly=on]
 //! ```
 //! Interactive command-line usage:
 //! ```bash
