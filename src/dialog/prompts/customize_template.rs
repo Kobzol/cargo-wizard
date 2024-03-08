@@ -100,7 +100,7 @@ fn prompt_choose_item_or_confirm_template(
         )
         .collect();
     let answer = Select::new("Select items to modify or confirm the template:", rows)
-        .with_page_size(10)
+        .with_page_size(12)
         .with_help_message(
             "↑↓ to move, enter to select, type to filter\n* Requires nightly compiler",
         )
