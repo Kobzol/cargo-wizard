@@ -2,14 +2,16 @@ use std::fmt::{Display, Formatter};
 use std::str;
 use std::str::FromStr;
 
+use inquire::autocompletion::Replacement;
 use inquire::validator::{ErrorMessage, Validation};
-use inquire::{CustomType, Select};
+use inquire::{Autocomplete, CustomUserError, Select, Text};
 
 use cargo_wizard::{Template, TemplateItemId, TomlValue};
 
 use crate::cli::CliConfig;
 use crate::dialog::known_options::{
-    KnownCargoOptions, PossibleValue, SelectedPossibleValue, TemplateItemMedata, TomlValueKind,
+    CustomPossibleValue, KnownCargoOptions, PossibleValue, SelectedPossibleValue,
+    TemplateItemMedata, TomlValueKind,
 };
 use crate::dialog::utils::create_render_config;
 use crate::dialog::PromptResult;
@@ -182,7 +184,7 @@ fn prompt_select_value_for_item(
     enum Row<'a> {
         ConstantValue(PossibleValue),
         CustomValue {
-            kind: TomlValueKind,
+            custom_value: &'a CustomPossibleValue,
             selected_value: &'a SelectedPossibleValue,
         },
         Unset,
@@ -198,7 +200,7 @@ fn prompt_select_value_for_item(
                     value.value().to_toml_value().to_string(),
                 ),
                 Row::CustomValue {
-                    kind,
+                    custom_value,
                     selected_value,
                 } => {
                     write!(f, "{:<40}", "Custom value")?;
@@ -206,7 +208,7 @@ fn prompt_select_value_for_item(
                         SelectedPossibleValue::Custom { value } => {
                             write!(f, " {}", TomlValueDisplay(value))
                         }
-                        _ => write!(f, "({})", ValueKindDisplay(*kind)),
+                        _ => write!(f, "({})", ValueKindDisplay(custom_value.kind())),
                     }
                 }
                 Row::Unset => f.write_str("<Unset value>"),
@@ -228,9 +230,9 @@ fn prompt_select_value_for_item(
         .cloned()
         .map(Row::ConstantValue)
         .collect();
-    if let Some(kind) = value_set.get_custom_value_kind() {
+    if let Some(custom_value) = value_set.get_custom_value() {
         rows.push(Row::CustomValue {
-            kind,
+            custom_value,
             selected_value: &selected_value,
         });
     }
@@ -239,7 +241,7 @@ fn prompt_select_value_for_item(
     rows.push(Row::Cancel);
 
     let mut default_index = value_set.get_possible_values().len();
-    if value_set.get_custom_value_kind().is_some() {
+    if value_set.get_custom_value().is_some() {
         default_index += 1;
     }
 
@@ -260,8 +262,8 @@ fn prompt_select_value_for_item(
     let result = match selected {
         Some(selected) => match selected {
             Row::ConstantValue(value) => SelectItemValueResponse::Set(value.value().clone()),
-            Row::CustomValue { kind, .. } => {
-                let value = prompt_enter_custom_value(cli_config, kind)?;
+            Row::CustomValue { custom_value, .. } => {
+                let value = prompt_enter_custom_value(cli_config, custom_value)?;
                 SelectItemValueResponse::Set(value)
             }
             Row::Unset => SelectItemValueResponse::Unset,
@@ -276,7 +278,7 @@ fn prompt_select_value_for_item(
 /// Enter a custom TOML value of the given kind.
 fn prompt_enter_custom_value(
     cli_config: &CliConfig,
-    kind: TomlValueKind,
+    custom_value: &CustomPossibleValue,
 ) -> PromptResult<TomlValue> {
     #[derive(Clone)]
     struct Value(TomlValue);
@@ -305,27 +307,61 @@ fn prompt_enter_custom_value(
         }
     }
 
-    let value = CustomType::<Value>::new(&format!(
+    #[derive(Clone)]
+    struct AutoCompleter(Vec<String>);
+
+    impl Autocomplete for AutoCompleter {
+        fn get_suggestions(&mut self, input: &str) -> Result<Vec<String>, CustomUserError> {
+            Ok(self
+                .0
+                .clone()
+                .into_iter()
+                .filter(|v| v.contains(input))
+                .collect())
+        }
+
+        fn get_completion(
+            &mut self,
+            _input: &str,
+            highlighted_suggestion: Option<String>,
+        ) -> Result<Replacement, CustomUserError> {
+            Ok(highlighted_suggestion)
+        }
+    }
+
+    // Ideally, we would use the CustomValue prompt here, but that doesn't support autocompletion.
+    let kind = custom_value.kind();
+    let value = Text::new(&format!(
         "Enter custom value of type {}: ",
-        ValueKindDisplay(kind)
+        ValueKindDisplay(custom_value.kind())
     ))
-    .with_validator(move |val: &Value| match kind {
-        TomlValueKind::Int if matches!(val.0, TomlValue::Int(_)) => Ok(Validation::Valid),
-        TomlValueKind::String if matches!(val.0, TomlValue::String(_)) => Ok(Validation::Valid),
-        TomlValueKind::Int | TomlValueKind::String => {
-            Ok(Validation::Invalid(ErrorMessage::Custom(format!(
-                "Invalid TOML type, expected `{}`, got {}",
-                ValueKindDisplay(kind),
-                match val.0 {
-                    TomlValue::Int(_) => "int",
-                    TomlValue::Bool(_) => "bool",
-                    TomlValue::String(_) => "string",
-                }
-            ))))
+    .with_autocomplete(AutoCompleter(custom_value.possible_entries().to_vec()))
+    .with_validator(move |val: &str| {
+        let val = match Value::from_str(val) {
+            Ok(val) => val,
+            Err(error) => return Ok(Validation::Invalid(ErrorMessage::Custom(error.to_string()))),
+        };
+        match kind {
+            TomlValueKind::Int if matches!(val.0, TomlValue::Int(_)) => Ok(Validation::Valid),
+            TomlValueKind::String if matches!(val.0, TomlValue::String(_)) => Ok(Validation::Valid),
+            TomlValueKind::Int | TomlValueKind::String => {
+                Ok(Validation::Invalid(ErrorMessage::Custom(format!(
+                    "Invalid TOML type, expected `{}`, got {}",
+                    ValueKindDisplay(kind),
+                    match val.0 {
+                        TomlValue::Int(_) => "int",
+                        TomlValue::Bool(_) => "bool",
+                        TomlValue::String(_) => "string",
+                    }
+                ))))
+            }
         }
     })
     .with_render_config(create_render_config(cli_config))
+    .with_help_message("↑↓ to select hint, tab to autocomplete hint, enter to submit")
     .prompt()?;
 
+    // We expect that the value has been parsed successfully thanks to the validator above
+    let value = Value::from_str(&value).expect("Could not parse value");
     Ok(value.0)
 }
