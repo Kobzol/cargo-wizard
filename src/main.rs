@@ -33,13 +33,23 @@ enum ColorPolicy {
     Never,
 }
 
+#[derive(clap::ValueEnum, Clone, Debug)]
+enum NightlyOptions {
+    /// Include nightly options if you invoke `cargo wizard` with a nightly compiler.
+    Auto,
+    /// Include nightly options.
+    On,
+    /// Do not include nightly options.
+    Off,
+}
+
 #[derive(clap::Parser, Debug)]
 struct InnerArgs {
     /// Console color policy.
     #[arg(
         long,
-        default_value_t = ColorPolicy::Auto,
         value_enum,
+        default_value_t = ColorPolicy::Auto,
         global = true,
         help_heading("GLOBAL OPTIONS"),
         hide_short_help(true)
@@ -49,8 +59,12 @@ struct InnerArgs {
     /// Include profile configuration that requires a nightly compiler.
     #[arg(
         long,
-        default_value_t = ColorPolicy::Auto,
+        value_enum,
+        default_value_t = NightlyOptions::Auto,
+        default_missing_value = "on",
         global = true,
+        num_args = 0..=1,
+        require_equals = true,
         help_heading("GLOBAL OPTIONS"),
         hide_short_help(true)
     )]
@@ -92,12 +106,25 @@ enum SubCommand {
     },
 }
 
+fn options_from_args(args: &InnerArgs) -> WizardOptions {
+    let mut options = WizardOptions::default();
+    match args.nightly {
+        NightlyOptions::Auto => {}
+        NightlyOptions::On => {
+            options = options.with_nightly_items();
+        }
+        NightlyOptions::Off => {}
+    }
+    options
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     match args {
-        Args::Wizard(args) => {
-            let cli_config = setup_cli(args.colors);
-            match args.subcmd {
+        Args::Wizard(root_args) => {
+            let options = options_from_args(&root_args);
+            let cli_config = setup_cli(root_args.colors);
+            match root_args.subcmd {
                 Some(SubCommand::Apply {
                     args,
                     manifest_path,
@@ -108,7 +135,6 @@ fn main() -> anyhow::Result<()> {
                             resolve_manifest_path().context("Cannot resolve Cargo.toml path")?
                         }
                     };
-                    let options = WizardOptions::default();
                     let workspace = parse_workspace(&manifest_path)?;
                     let template = args.template.build_template(&options);
                     let modified = workspace.apply_template(&args.profile.0, &template)?;
@@ -116,7 +142,7 @@ fn main() -> anyhow::Result<()> {
                     on_template_applied(args.template, &template, &args.profile.0);
                 }
                 None => {
-                    if let Err(error) = run_root_dialog(cli_config, WizardOptions::default()) {
+                    if let Err(error) = run_root_dialog(cli_config, options) {
                         match error {
                             DialogError::Interrupted => {
                                 // Print an empty line when the app is interrupted, to avoid
