@@ -8,8 +8,9 @@
 
 [crates.io]: https://crates.io/crates/cargo-wizard
 
-**Cargo subcommand that applies predefined [Cargo profile](https://doc.rust-lang.org/cargo/reference/profiles.html)
-templates to your Cargo workspace to get you up to speed quickly.**
+**Cargo subcommand that applies predefined Cargo [profile](https://doc.rust-lang.org/cargo/reference/profiles.html)
+and [config](https://doc.rust-lang.org/cargo/reference/config.html#configuration-format) templates to your Cargo
+workspace to get you up to speed quickly.**
 
 # Motivation
 I often see Rust users asking online about how can they best configure Cargo get e.g. the fastest compilation times,
@@ -40,16 +41,26 @@ $ cargo install cargo-wizard
     $ cargo wizard apply fast-runtime dist
     ```
 
+> You can enable profile/config options that require a nightly compiler by running `cargo-wizard` with a nightly Cargo (
+> e.g. `cargo +nightly wizard`) or by using the `--nightly` flag.
+
 # Features
-`cargo-wizard` can create or modify Cargo profiles in your `Cargo.toml` manifest (and also configuration in
+`cargo-wizard` can create or modify Cargo profiles in your `Cargo.toml` manifest and RUSTFLAGS in
 the [`.cargo/config.toml`](https://doc.rust-lang.org/cargo/reference/config.html#configuration-format) file) based on a
 set of prepared templates:
 
 - **`fast-compile`** - minimizes compilation times
+    - Disables debuginfo generation and uses a faster linker.
+    - In nightly mode, it also enables
+      the [Cranelift codegen backend](https://nnethercote.github.io/perf-book/build-configuration.html#cranelift-codegen-back-end)
+      and
+      the [parallel frontend](https://nnethercote.github.io/perf-book/build-configuration.html#experimental-parallel-front-end).
 - **`fast-runtime`** - maximizes runtime performance
+    - Enables [LTO](https://doc.rust-lang.org/cargo/reference/profiles.html#lto) and maximal optimization settings.
 - **`min-size`** - minimizes binary size
+    - Similar to `fast-runtime`, but uses optimization flags designed for small binary size.
 
-In the interactive mode, it also allows you to customize the templates.
+You can also modify these templates in the interactive mode, or build your own custom template.
 
 > Note that `config.toml` changes are applied to the global `build.hostflags` option, because per-profile Rustflags are
 > still [unstable](https://github.com/rust-lang/cargo/issues/10271).
@@ -59,18 +70,19 @@ In the interactive mode, it also allows you to customize the templates.
 - [Min-sized Rust](https://github.com/johnthagen/min-sized-rust)
 - [The Rust Performance Book](https://nnethercote.github.io/perf-book/build-configuration.html)
 
-# Contributions
+# Contributing
 Contributions are welcome :)
 
-Possible features:
+Possible future features:
 
+- [ ] Allow configuring
+  the [memory allocator](https://nnethercote.github.io/perf-book/build-configuration.html#alternative-allocators).
 - [ ] Load/store templates on disk to make them easier to share
 
 # Acknowledgements
 
 `cargo wizard` uses the incredible [`toml_edit`](https://docs.rs/toml_edit/latest/toml_edit/) crate to keep original
-formatting of
-the modified TOML files.
+formatting of the modified TOML files.
 
 # License
 [MIT](LICENSE)
