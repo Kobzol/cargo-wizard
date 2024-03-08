@@ -75,7 +75,7 @@ pub enum TemplateItemId {
 }
 
 /// Describes options for applying templates
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct WizardOptions {
     /// Include template items that require a nightly compiler.
     nightly_items: bool,

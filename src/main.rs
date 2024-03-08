@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use clap::Parser;
+use rustc_version::Channel;
 
 use cargo_wizard::{
     parse_workspace, resolve_manifest_path, PredefinedTemplateKind, Profile, WizardOptions,
@@ -108,12 +109,23 @@ enum SubCommand {
 
 fn options_from_args(args: &InnerArgs) -> WizardOptions {
     let mut options = WizardOptions::default();
-    match args.nightly {
-        NightlyOptions::Auto => {}
-        NightlyOptions::On => {
-            options = options.with_nightly_items();
+    let is_nightly = match args.nightly {
+        NightlyOptions::Auto => {
+            match rustc_version::version_meta() {
+                Ok(metadata) => {
+                    matches!(metadata.channel, Channel::Nightly)
+                }
+                Err(error) => {
+                    eprintln!("Cannot get compiler channel, defaulting to *no* nightly options ({error:?}");
+                    false
+                }
+            }
         }
-        NightlyOptions::Off => {}
+        NightlyOptions::On => true,
+        NightlyOptions::Off => false,
+    };
+    if is_nightly {
+        options = options.with_nightly_items();
     }
     options
 }
