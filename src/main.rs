@@ -24,9 +24,12 @@ enum Args {
 }
 
 #[derive(clap::ValueEnum, Clone, Debug)]
-pub enum ColorPolicy {
+enum ColorPolicy {
+    /// Use colors if the stdout is detected to be a terminal.
     Auto,
+    /// Use colors.
     Always,
+    /// Do not use colors.
     Never,
 }
 
@@ -42,6 +45,16 @@ struct InnerArgs {
         hide_short_help(true)
     )]
     colors: ColorPolicy,
+
+    /// Include profile configuration that requires a nightly compiler.
+    #[arg(
+        long,
+        default_value_t = ColorPolicy::Auto,
+        global = true,
+        help_heading("GLOBAL OPTIONS"),
+        hide_short_help(true)
+    )]
+    nightly: NightlyOptions,
 
     #[clap(subcommand)]
     subcmd: Option<SubCommand>,
