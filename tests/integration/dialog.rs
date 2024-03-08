@@ -256,12 +256,27 @@ edition = "2021"
     Ok(())
 }
 
+#[test]
+fn dialog_check_nightly_output() -> anyhow::Result<()> {
+    let project = init_cargo_project()?.disable_check_on_drop();
+
+    DialogBuilder::default()
+        .profile_release()
+        .customize_item("Codegen backend", "Cranelift")
+        .with_final_check("cargo +nightly <cmd>")
+        .with_final_check("You will have to use a nightly compiler")
+        .run(&project)?;
+
+    Ok(())
+}
+
 struct DialogBuilder {
     profile: String,
     created_profile: Option<String>,
     template: String,
     accept_diff: bool,
     customized_items: Vec<(String, String)>,
+    final_checks: Vec<String>,
 }
 
 impl Default for DialogBuilder {
@@ -272,6 +287,7 @@ impl Default for DialogBuilder {
             template: "FastCompile".to_string(),
             accept_diff: true,
             customized_items: vec![],
+            final_checks: vec![],
         }
     }
 }
@@ -308,6 +324,11 @@ impl DialogBuilder {
         self
     }
 
+    fn with_final_check(mut self, name: &str) -> Self {
+        self.final_checks.push(name.to_string());
+        self
+    }
+
     fn run(self, project: &CargoProject) -> anyhow::Result<()> {
         let mut terminal = project.cmd(&[]).start_terminal()?;
         // Select template
@@ -339,6 +360,9 @@ impl DialogBuilder {
                 "Template {} applied to profile {profile_name}",
                 self.template
             ))?;
+            for check in self.final_checks {
+                terminal.expect(&check)?;
+            }
         } else {
             terminal.line("n")?;
         }
