@@ -72,6 +72,10 @@ You can also modify these templates in the interactive mode to build your own cu
 - [Min-sized Rust](https://github.com/johnthagen/min-sized-rust)
 - [The Rust Performance Book](https://nnethercote.github.io/perf-book/build-configuration.html)
 
+> Why `wizard`? The name is inspired by
+> GUI [wizards](https://documentation.softwareag.com/natural/nat913win/edis/edis_win_dia_wiz.htm) that guide you through
+> some process using a series of dialogs.
+
 # Contributing
 Contributions are welcome :)
 
