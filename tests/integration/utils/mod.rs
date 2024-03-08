@@ -206,7 +206,6 @@ impl Terminal {
 
 pub trait OutputExt {
     fn assert_ok(self) -> Self;
-    fn assert_error(self) -> Self;
 
     fn stdout(&self) -> String;
     fn stderr(&self) -> String;
@@ -218,15 +217,6 @@ impl OutputExt for Output {
             eprintln!("Stdout: {}", self.stdout());
             eprintln!("Stderr: {}", self.stderr());
             panic!("Output was not successful");
-        }
-        self
-    }
-
-    fn assert_error(self) -> Self {
-        if self.status.success() {
-            eprintln!("Stdout: {}", self.stdout());
-            eprintln!("Stderr: {}", self.stderr());
-            panic!("Output was successful");
         }
         self
     }

@@ -1,4 +1,4 @@
-use crate::utils::{init_cargo_project, OutputExt};
+use crate::utils::{init_cargo_project, CargoProject, OutputExt};
 
 #[test]
 fn apply_explicit_manifest_path() -> anyhow::Result<()> {
@@ -19,6 +19,7 @@ edition = "2021"
             "apply",
             "dev",
             "fast-compile",
+            "--nightly=off",
             "--manifest-path",
             manifest_path,
         ])
@@ -59,7 +60,7 @@ members = ["bar"]
     );
 
     project
-        .cmd(&["apply", "dev", "fast-compile"])
+        .cmd(&["apply", "dev", "fast-compile", "--nightly=off"])
         .cwd(&project.path("bar"))
         .run()?
         .assert_ok();
@@ -78,10 +79,7 @@ members = ["bar"]
 fn apply_missing_builtin() -> anyhow::Result<()> {
     let project = init_cargo_project()?;
 
-    project
-        .cmd(&["apply", "dev", "fast-compile"])
-        .run()?
-        .assert_ok();
+    apply(&project, "dev", "fast-compile")?;
     insta::assert_snapshot!(project.read_manifest(), @r###"
     [package]
     name = "foo"
@@ -111,10 +109,7 @@ debug = 1
 "#,
     );
 
-    project
-        .cmd(&["apply", "dev", "fast-compile"])
-        .run()?
-        .assert_ok();
+    apply(&project, "dev", "fast-compile")?;
     insta::assert_snapshot!(project.read_manifest(), @r###"
     [package]
     name = "foo"
@@ -132,10 +127,7 @@ debug = 1
 fn apply_missing_custom() -> anyhow::Result<()> {
     let project = init_cargo_project()?;
 
-    project
-        .cmd(&["apply", "custom1", "fast-compile"])
-        .run()?
-        .assert_ok();
+    apply(&project, "custom1", "fast-compile")?;
     insta::assert_snapshot!(project.read_manifest(), @r###"
     [package]
     name = "foo"
@@ -167,10 +159,7 @@ debug = 1
 "#,
     );
 
-    project
-        .cmd(&["apply", "custom1", "fast-compile"])
-        .run()?
-        .assert_ok();
+    apply(&project, "custom1", "fast-compile")?;
     insta::assert_snapshot!(project.read_manifest(), @r###"
     [package]
     name = "foo"
@@ -206,10 +195,7 @@ codegen-units    = 10
 "#,
     );
 
-    project
-        .cmd(&["apply", "dev", "fast-compile"])
-        .run()?
-        .assert_ok();
+    apply(&project, "dev", "fast-compile")?;
     insta::assert_snapshot!(project.read_manifest(), @r###"
 
     [package]
@@ -233,10 +219,7 @@ codegen-units    = 10
 fn apply_fast_runtime_template() -> anyhow::Result<()> {
     let project = init_cargo_project()?;
 
-    project
-        .cmd(&["apply", "custom", "fast-runtime"])
-        .run()?
-        .assert_ok();
+    apply(&project, "custom", "fast-runtime")?;
     insta::assert_snapshot!(project.read_manifest(), @r###"
 
     [package]
@@ -263,10 +246,7 @@ fn apply_fast_runtime_template() -> anyhow::Result<()> {
 fn apply_min_size_template() -> anyhow::Result<()> {
     let project = init_cargo_project()?;
 
-    project
-        .cmd(&["apply", "custom", "min-size"])
-        .run()?
-        .assert_ok();
+    apply(&project, "custom", "min-size")?;
     insta::assert_snapshot!(project.read_manifest(), @r###"
 
     [package]
@@ -284,5 +264,13 @@ fn apply_min_size_template() -> anyhow::Result<()> {
     panic = "abort"
     "###);
 
+    Ok(())
+}
+
+fn apply(project: &CargoProject, profile: &str, template: &str) -> anyhow::Result<()> {
+    project
+        .cmd(&["apply", profile, template, "--nightly=off"])
+        .run()?
+        .assert_ok();
     Ok(())
 }
