@@ -12,6 +12,8 @@
 and [config](https://doc.rust-lang.org/cargo/reference/config.html#configuration-format) templates to your Cargo
 workspace to get you up to speed quickly.**
 
+![Demo of cargo-wizard](img/wizard-demo.gif)
+
 # Motivation
 I often see Rust users asking online about how can they best configure Cargo get e.g. the fastest compilation times,
 best
@@ -60,7 +62,7 @@ set of prepared templates:
 - **`min-size`** - minimizes binary size
     - Similar to `fast-runtime`, but uses optimization flags designed for small binary size.
 
-You can also modify these templates in the interactive mode, or build your own custom template.
+You can also modify these templates in the interactive mode to build your own custom template.
 
 > Note that `config.toml` changes are applied to the global `build.hostflags` option, because per-profile Rustflags are
 > still [unstable](https://github.com/rust-lang/cargo/issues/10271).
