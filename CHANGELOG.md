@@ -1,4 +1,4 @@
-# Dev
+# 0.2.0 (9. 3. 2024)
 
 - Add interactive dialog.
 - Add support for modifying `.cargo/config.toml`.
