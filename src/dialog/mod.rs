@@ -114,8 +114,18 @@ pub fn on_template_applied(
 
     if let PredefinedTemplateKind::FastRuntime = template_kind {
         println!(
-            "\nTip: Consider using the {} subcommand to further optimize your binary.",
+            "Tip: consider using the {} subcommand to further optimize your binary.",
             utils::command_style().apply_to("cargo-pgo")
         );
     }
+    let info_url = match template_kind {
+        PredefinedTemplateKind::FastRuntime | PredefinedTemplateKind::FastCompile => {
+            "https://nnethercote.github.io/perf-book/build-configuration.html"
+        }
+        PredefinedTemplateKind::MinSize => "https://github.com/johnthagen/min-sized-rust",
+    };
+    println!(
+        "Tip: find more information at {}.",
+        utils::command_style().apply_to(info_url)
+    );
 }
