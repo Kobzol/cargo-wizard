@@ -70,10 +70,11 @@ pub struct CargoManifest {
 
 impl CargoManifest {
     pub fn from_path(path: &Path) -> anyhow::Result<Self> {
-        let manifest = std::fs::read_to_string(path).context("Cannot read Cargo.toml manifest")?;
+        let manifest = std::fs::read_to_string(path)
+            .with_context(|| format!("Cannot read Cargo.toml manifest from {}", path.display()))?;
         let document = manifest
             .parse::<Document>()
-            .context("Cannot parse Cargo.toml manifest")?;
+            .with_context(|| format!("Cannot parse Cargo.toml manifest from {}", path.display()))?;
         Ok(Self {
             document,
             path: path.to_path_buf(),

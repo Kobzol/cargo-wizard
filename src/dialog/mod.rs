@@ -21,9 +21,9 @@ use crate::dialog::known_options::KnownCargoOptions;
 pub use utils::profile_from_str;
 
 pub fn run_root_dialog(cli_config: CliConfig) -> PromptResult<()> {
-    let template_kind = prompt_select_template(&cli_config)?;
     let manifest_path = resolve_manifest_path().context("Cannot resolve Cargo.toml path")?;
     let workspace = parse_workspace(&manifest_path)?;
+    let template_kind = prompt_select_template(&cli_config)?;
 
     let existing_profiles = workspace
         .existing_profiles()
