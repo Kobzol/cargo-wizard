@@ -9,6 +9,7 @@ pub struct CargoProject {
     _name: String,
     pub dir: PathBuf,
     _tempdir: TempDir,
+    check_on_drop: bool,
 }
 
 impl CargoProject {
@@ -66,6 +67,11 @@ impl CargoProject {
         let path = self.config_path();
         self.read(path)
     }
+
+    pub fn disable_check_on_drop(mut self) -> Self {
+        self.check_on_drop = false;
+        self
+    }
 }
 
 impl Drop for CargoProject {
@@ -74,7 +80,7 @@ impl Drop for CargoProject {
             // Do not delete the directory if an error has occurred
             let path = std::mem::replace(&mut self._tempdir, TempDir::new().unwrap()).into_path();
             eprintln!("Directory of failed test located at: {}", path.display());
-        } else {
+        } else if self.check_on_drop {
             Cmd::default()
                 .args(&["cargo", "check"])
                 .cwd(&self.dir)
@@ -146,7 +152,7 @@ impl Cmd {
 }
 
 pub struct Terminal {
-    session: PtySession,
+    pub session: PtySession,
 }
 
 impl Terminal {
@@ -170,6 +176,26 @@ impl Terminal {
         self.session.send("\x1b\x5b\x42")?;
         self.session.flush()?;
         Ok(())
+    }
+
+    /// Find a line that begings by `> {prefix}` by going through a list using the down arrow key.
+    pub fn select_line(&mut self, prefix: &str) -> anyhow::Result<()> {
+        let max_tries = 20;
+        for _ in 0..max_tries {
+            if self
+                .session
+                .exp_regex(&format!("\n>\\s*{prefix}.*"))
+                .is_ok()
+            {
+                return self.key_enter();
+            }
+            self.key_down()?;
+        }
+        eprintln!("Could not find line beginning with {prefix} in {max_tries} tries.");
+        // Print terminal output
+        self.session
+            .exp_string(&format!("<missing {prefix} in list>"))?;
+        unreachable!();
     }
 
     pub fn wait(self) -> anyhow::Result<()> {
@@ -232,12 +258,12 @@ pub fn init_cargo_project() -> anyhow::Result<CargoProject> {
         _name: name.to_string(),
         dir: path,
         _tempdir: dir,
+        check_on_drop: true,
     };
 
     // Normalize the manifest to avoid any surprises
     project.manifest(
-        r#"
-[package]
+        r#"[package]
 name = "foo"
 version = "0.1.0"
 edition = "2021"
