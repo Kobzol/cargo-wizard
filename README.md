@@ -40,11 +40,11 @@ $ cargo install cargo-wizard
     ```bash
     $ cargo wizard apply <profile> <template>
     # For example, apply `fast-runtime` template to the `dist` profile
-    $ cargo wizard apply fast-runtime dist
+    $ cargo wizard apply dist fast-runtime
     ```
 
-> You can enable profile/config options that require a nightly compiler by running `cargo-wizard` with a nightly Cargo (
-> e.g. `cargo +nightly wizard`) or by using the `--nightly` flag.
+> You can enable profile/config options that require a nightly compiler by running `cargo-wizard` with a nightly Cargo
+> (e.g. `cargo +nightly wizard`) or by using the `--nightly` flag.
 
 # Features
 `cargo-wizard` can create or modify Cargo profiles in your `Cargo.toml` manifest and RUSTFLAGS in
