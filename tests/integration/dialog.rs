@@ -322,6 +322,29 @@ fn dialog_fast_compile_nightly() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test]
+fn dialog_unset_item() -> anyhow::Result<()> {
+    let project = init_cargo_project()?;
+
+    DialogBuilder::default()
+        .template("FastRuntime")
+        .customize_item("Panic", "<Unset value>")
+        .run(&project)?;
+
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.dev]
+    lto = true
+    codegen-units = 1
+    "###);
+
+    Ok(())
+}
+
 enum CustomValue {
     Constant(String),
     Custom(String),
