@@ -1,7 +1,9 @@
-use crate::cli::CliConfig;
-use cargo_wizard::Profile;
 use console::Style;
 use inquire::ui::RenderConfig;
+
+use cargo_wizard::Profile;
+
+use crate::cli::CliConfig;
 
 pub fn create_render_config(cli_config: &CliConfig) -> RenderConfig<'static> {
     if cli_config.colors_enabled() {
@@ -9,6 +11,22 @@ pub fn create_render_config(cli_config: &CliConfig) -> RenderConfig<'static> {
     } else {
         RenderConfig::empty()
     }
+}
+
+pub fn colorize_render_config<'a>(
+    cli_config: &CliConfig,
+    mut config: RenderConfig<'a>,
+    color: inquire::ui::Color,
+) -> RenderConfig<'a> {
+    if cli_config.colors_enabled() {
+        config.answer = config.option.with_fg(color);
+        config.selected_option = config.selected_option.map(|s| s.with_fg(color));
+        config.highlighted_option_prefix.style =
+            config.highlighted_option_prefix.style.with_fg(color);
+        config.prompt_prefix.style = config.prompt_prefix.style.with_fg(color);
+        config.answered_prompt_prefix.style = config.answered_prompt_prefix.style.with_fg(color);
+    }
+    config
 }
 
 pub fn template_style() -> Style {

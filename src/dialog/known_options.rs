@@ -296,7 +296,8 @@ impl KnownCargoOptions {
                 .on_applied(|value| {
                     if let TomlValue::String(linker) = value {
                         Some(format!(
-                            "⚠️  Do not forget to install the linker, e.g. using `{}`.",
+                            "⚠️  Do not forget to install the {} linker, e.g. using `{}`.",
+                            utils::command_style().apply_to(linker),
                             utils::command_style().apply_to(format!("sudo apt install {linker}"))
                         ))
                     } else {

@@ -1,13 +1,14 @@
 use std::fmt::{Display, Formatter};
 
 use console::{style, Style};
+use inquire::ui::{Color, RenderConfig};
 use inquire::Confirm;
 use similar::ChangeTag;
 
 use cargo_wizard::{CargoWorkspace, ModificationResult, ModifiedWorkspace, Profile, Template};
 
 use crate::cli::CliConfig;
-use crate::dialog::utils::{clear_line, create_render_config, file_style};
+use crate::dialog::utils::{clear_line, colorize_render_config, create_render_config, file_style};
 use crate::dialog::PromptResult;
 
 pub enum ConfirmDiffPromptResponse {
@@ -62,7 +63,7 @@ pub fn prompt_confirm_diff(
         if multiple_diffs { "s" } else { "" }
     ))
     .with_default(true)
-    .with_render_config(create_render_config(cli_config))
+    .with_render_config(confirm_render_diff(cli_config))
     .prompt()?;
 
     Ok(match answer {
@@ -121,4 +122,9 @@ fn render_diff(original: &str, new: &str) -> String {
         }
     }
     output
+}
+
+fn confirm_render_diff(cli_config: &CliConfig) -> RenderConfig<'static> {
+    let render_config = create_render_config(cli_config);
+    colorize_render_config(cli_config, render_config, Color::DarkBlue)
 }

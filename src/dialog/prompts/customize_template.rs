@@ -3,6 +3,7 @@ use std::str;
 use std::str::FromStr;
 
 use inquire::autocompletion::Replacement;
+use inquire::ui::{Color, RenderConfig};
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Autocomplete, CustomUserError, Select, Text};
 
@@ -13,7 +14,7 @@ use crate::dialog::known_options::{
     CustomPossibleValue, KnownCargoOptions, PossibleValue, SelectedPossibleValue,
     TemplateItemMedata, TomlValueKind,
 };
-use crate::dialog::utils::create_render_config;
+use crate::dialog::utils::{colorize_render_config, create_render_config};
 use crate::dialog::PromptResult;
 
 /// Customize the properties of a template, by choosing or modifying selected items.
@@ -115,9 +116,9 @@ fn prompt_choose_item_or_confirm_template(
     let answer = Select::new("Select items to modify or confirm the template:", rows)
         .with_page_size(12)
         .with_help_message(
-            "↑↓ to move, enter to select, type to filter. * Requires nightly compiler, ^ Requires Unix",
+            "↑↓ to move, enter to select, type to filter. * Requires nightly compiler ^ Requires Unix",
         )
-        .with_render_config(create_render_config(cli_config))
+        .with_render_config(customize_render_config(cli_config))
         .prompt()?;
     Ok(match answer {
         Row::Confirm => ChooseItemResponse::ConfirmTemplate,
@@ -267,7 +268,7 @@ fn prompt_select_value_for_item(
     let selected = Select::new(&format!("Select value for `{}`:", item_id), rows)
         .with_starting_cursor(index)
         .with_help_message("↑↓ to move, enter to select, type to filter, ESC to cancel")
-        .with_render_config(create_render_config(cli_config))
+        .with_render_config(customize_render_config(cli_config))
         .prompt_skippable()?;
 
     let result = match selected {
@@ -368,11 +369,16 @@ fn prompt_enter_custom_value(
             }
         }
     })
-    .with_render_config(create_render_config(cli_config))
+    .with_render_config(customize_render_config(cli_config))
     .with_help_message("↑↓ to select hint, tab to autocomplete hint, enter to submit")
     .prompt()?;
 
     // We expect that the value has been parsed successfully thanks to the validator above
     let value = Value::from_str(&value).expect("Could not parse value");
     Ok(value.0)
+}
+
+fn customize_render_config(cli_config: &CliConfig) -> RenderConfig<'static> {
+    let render_config = create_render_config(cli_config);
+    colorize_render_config(cli_config, render_config, Color::LightCyan)
 }

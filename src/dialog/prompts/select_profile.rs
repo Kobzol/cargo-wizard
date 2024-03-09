@@ -1,5 +1,5 @@
 use crate::cli::CliConfig;
-use crate::dialog::utils::create_render_config;
+use crate::dialog::utils::{colorize_render_config, create_render_config};
 use crate::dialog::PromptResult;
 use cargo_wizard::Profile;
 use inquire::ui::{Color, RenderConfig};
@@ -70,16 +70,6 @@ fn prompt_enter_profile_name(cli_config: &CliConfig) -> PromptResult<Profile> {
 }
 
 fn profile_render_config(cli_config: &CliConfig) -> RenderConfig<'static> {
-    let mut render_config = create_render_config(cli_config);
-    render_config.answer = render_config.option.with_fg(Color::DarkGreen);
-    render_config.selected_option = render_config
-        .selected_option
-        .map(|s| s.with_fg(Color::DarkGreen));
-    if cli_config.colors_enabled() {
-        render_config.highlighted_option_prefix.style = render_config
-            .highlighted_option_prefix
-            .style
-            .with_fg(Color::DarkGreen);
-    }
-    render_config
+    let render_config = create_render_config(cli_config);
+    colorize_render_config(cli_config, render_config, Color::DarkGreen)
 }
