@@ -28,8 +28,13 @@ impl PredefinedTemplateKind {
 /// Template that focuses on quick compile time.
 pub fn fast_compile_template(options: &WizardOptions) -> Template {
     let mut builder = TemplateBuilder::new(BuiltinProfile::Dev)
-        .item(TemplateItemId::DebugInfo, TomlValue::int(0))
-        .item(TemplateItemId::Linker, TomlValue::string("lld"));
+        .item(TemplateItemId::DebugInfo, TomlValue::int(0));
+
+    #[cfg(unix)]
+    {
+        builder = builder.item(TemplateItemId::Linker, TomlValue::string("lld"));
+    }
+
     if options.nightly_items_enabled() {
         builder = builder
             .item(
