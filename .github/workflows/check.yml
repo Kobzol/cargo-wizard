@@ -10,10 +10,20 @@ on:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        rust-version: [ stable, beta, nightly ]
+        include:
+          - rust-version: stable
+            os: ubuntu-latest
+          - rust-version: beta
+            os: ubuntu-latest
+          - rust-version: nightly
+            os: ubuntu-latest
+          - rust-version: stable
+            os: windows-latest
+          - rust-version: stable
+            os: macos-12
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
