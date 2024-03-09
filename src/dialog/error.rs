@@ -14,6 +14,7 @@ impl From<InquireError> for DialogError {
     fn from(value: InquireError) -> Self {
         match value {
             InquireError::OperationInterrupted => Self::Interrupted,
+            InquireError::OperationCanceled => Self::Interrupted,
             error => Self::Generic(error.into()),
         }
     }
