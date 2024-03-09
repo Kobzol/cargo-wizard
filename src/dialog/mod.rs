@@ -2,11 +2,13 @@ use anyhow::Context;
 
 use cargo_wizard::{
     parse_workspace, resolve_manifest_path, BuiltinProfile, PredefinedTemplateKind, Profile,
-    Template, TemplateItemId, TomlValue, WizardOptions,
+    Template, WizardOptions,
 };
 pub use error::{DialogError, PromptResult};
+pub use utils::profile_from_str;
 
 use crate::cli::CliConfig;
+pub use crate::dialog::known_options::KnownCargoOptions;
 use crate::dialog::prompts::confirm_diff::{prompt_confirm_diff, ConfirmDiffPromptResponse};
 use crate::dialog::prompts::customize_template::prompt_customize_template;
 use crate::dialog::prompts::select_profile::prompt_select_profile;
@@ -16,9 +18,6 @@ mod error;
 mod known_options;
 mod prompts;
 mod utils;
-
-pub use crate::dialog::known_options::KnownCargoOptions;
-pub use utils::profile_from_str;
 
 pub fn run_root_dialog(
     cli_config: CliConfig,
@@ -88,24 +87,11 @@ pub fn on_template_applied(
             utils::command_style().apply_to(format!("cargo {channel}<cmd> {flag}"))
         );
     }
-    if template.get_item(TemplateItemId::CodegenBackend)
-        == Some(&TomlValue::String("cranelift".to_string()))
-    {
-        println!(
-            "⚠️  Do not forget to install the cranelift component using `{}`.",
-            utils::command_style().apply_to(
-                "rustup component add rustc-codegen-cranelift-preview --toolchain nightly"
-            )
-        );
-    }
-    if let Some(linker) = template
-        .get_item(TemplateItemId::Linker)
-        .and_then(|v| v.to_toml_value().as_str().map(|s| s.to_string()))
-    {
-        println!(
-            "⚠️  Do not forget to install the linker, e.g. using `{}`.",
-            utils::command_style().apply_to(format!("sudo apt install {linker}"))
-        );
+
+    for (id, value) in template.iter_items() {
+        if let Some(message) = options.get_metadata(id).on_applied(value) {
+            println!("{message}");
+        }
     }
 
     if requires_nightly {

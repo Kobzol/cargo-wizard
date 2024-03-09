@@ -1,3 +1,4 @@
+use crate::dialog::utils;
 use anyhow::Context;
 use cargo_wizard::{get_core_count, TemplateItemId, TomlValue};
 use std::collections::HashSet;
@@ -27,10 +28,13 @@ pub enum SelectedPossibleValue {
     None,
 }
 
+type OnAppliedCallback = dyn Fn(&TomlValue) -> Option<String>;
+
 pub struct TemplateItemMedata {
     values: Vec<PossibleValue>,
     custom_value: Option<CustomPossibleValue>,
     flags: HashSet<ItemFlag>,
+    on_applied: Option<Box<OnAppliedCallback>>,
 }
 
 impl TemplateItemMedata {
@@ -59,6 +63,12 @@ impl TemplateItemMedata {
 
     pub fn requires_unix(&self) -> bool {
         self.flags.contains(&ItemFlag::RequiresUnix)
+    }
+
+    pub fn on_applied(&self, value: &TomlValue) -> Option<String> {
+        self.on_applied
+            .as_ref()
+            .and_then(|callback| callback(value))
     }
 }
 
@@ -97,6 +107,7 @@ struct MetadataBuilder {
     values: Vec<PossibleValue>,
     custom_value: Option<CustomPossibleValue>,
     flags: HashSet<ItemFlag>,
+    on_applied: Option<Box<OnAppliedCallback>>,
 }
 
 impl MetadataBuilder {
@@ -105,11 +116,13 @@ impl MetadataBuilder {
             values,
             custom_value,
             flags,
+            on_applied,
         } = self;
         TemplateItemMedata {
             values,
             custom_value,
             flags,
+            on_applied,
         }
     }
 
@@ -142,6 +155,11 @@ impl MetadataBuilder {
 
     fn requires_unix(mut self) -> Self {
         self.flags.insert(ItemFlag::RequiresUnix);
+        self
+    }
+
+    fn on_applied<F: Fn(&TomlValue) -> Option<String> + 'static>(mut self, f: F) -> Self {
+        self.on_applied = Some(Box::new(f));
         self
     }
 }
@@ -248,9 +266,20 @@ impl KnownCargoOptions {
                 })
                 .build(),
             TemplateItemId::CodegenBackend => MetadataBuilder::default()
-                .string("LLVM", "llvm")
                 .string("Cranelift", "cranelift")
                 .requires_nightly()
+                .on_applied(|value| {
+                    if value == &TomlValue::String("cranelift".to_string()) {
+                        Some(format!(
+                            "⚠️  Do not forget to install the Cranelift codegen backend using `{}`.",
+                            utils::command_style().apply_to(
+                                "rustup component add rustc-codegen-cranelift-preview --toolchain nightly"
+                            )
+                        ))
+                    } else {
+                        None
+                    }
+                })
                 .build(),
             TemplateItemId::FrontendThreads => MetadataBuilder::default()
                 .int(
@@ -264,6 +293,16 @@ impl KnownCargoOptions {
                 .string("LLD", "lld")
                 .string("MOLD", "mold")
                 .requires_unix()
+                .on_applied(|value| {
+                    if let TomlValue::String(linker) = value {
+                        Some(format!(
+                            "⚠️  Do not forget to install the linker, e.g. using `{}`.",
+                            utils::command_style().apply_to(format!("sudo apt install {linker}"))
+                        ))
+                    } else {
+                        None
+                    }
+                })
                 .build(),
         }
     }
