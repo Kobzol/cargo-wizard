@@ -1,5 +1,6 @@
 use anyhow::Context;
 use cargo_wizard::{get_core_count, TemplateItemId, TomlValue};
+use std::collections::HashSet;
 use std::env;
 use std::ffi::OsString;
 use std::process::{Command, Stdio};
@@ -29,7 +30,7 @@ pub enum SelectedPossibleValue {
 pub struct TemplateItemMedata {
     values: Vec<PossibleValue>,
     custom_value: Option<CustomPossibleValue>,
-    requires_nightly: bool,
+    flags: HashSet<ItemFlag>,
 }
 
 impl TemplateItemMedata {
@@ -53,7 +54,11 @@ impl TemplateItemMedata {
     }
 
     pub fn requires_nightly(&self) -> bool {
-        self.requires_nightly
+        self.flags.contains(&ItemFlag::RequiresNightly)
+    }
+
+    pub fn requires_unix(&self) -> bool {
+        self.flags.contains(&ItemFlag::RequiresUnix)
     }
 }
 
@@ -81,11 +86,17 @@ impl From<TomlValueKind> for CustomPossibleValue {
     }
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub enum ItemFlag {
+    RequiresNightly,
+    RequiresUnix,
+}
+
 #[derive(Default)]
 struct MetadataBuilder {
     values: Vec<PossibleValue>,
     custom_value: Option<CustomPossibleValue>,
-    requires_nightly: bool,
+    flags: HashSet<ItemFlag>,
 }
 
 impl MetadataBuilder {
@@ -93,12 +104,12 @@ impl MetadataBuilder {
         let MetadataBuilder {
             values,
             custom_value,
-            requires_nightly,
+            flags,
         } = self;
         TemplateItemMedata {
             values,
             custom_value,
-            requires_nightly,
+            flags,
         }
     }
 
@@ -125,7 +136,12 @@ impl MetadataBuilder {
     }
 
     fn requires_nightly(mut self) -> Self {
-        self.requires_nightly = true;
+        self.flags.insert(ItemFlag::RequiresNightly);
+        self
+    }
+
+    fn requires_unix(mut self) -> Self {
+        self.flags.insert(ItemFlag::RequiresUnix);
         self
     }
 }
@@ -247,6 +263,7 @@ impl KnownCargoOptions {
             TemplateItemId::Linker => MetadataBuilder::default()
                 .string("LLD", "lld")
                 .string("MOLD", "mold")
+                .requires_unix()
                 .build(),
         }
     }

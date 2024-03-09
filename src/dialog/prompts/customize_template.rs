@@ -73,8 +73,21 @@ fn prompt_choose_item_or_confirm_template(
                     metadata,
                     template,
                 } => {
-                    let is_nightly = metadata.requires_nightly();
-                    let name = format!("{id}{}", if is_nightly { " *" } else { "" });
+                    let mut notes = vec![];
+                    if metadata.requires_nightly() {
+                        notes.push("*");
+                    }
+                    if metadata.requires_unix() {
+                        notes.push("^");
+                    }
+                    let name = format!(
+                        "{id}{}",
+                        if notes.is_empty() {
+                            "".to_string()
+                        } else {
+                            format!(" {}", notes.join(""))
+                        }
+                    );
                     write!(f, "{name:<30}")?;
 
                     if let Some(value) = template.get_item(id.0) {
@@ -102,7 +115,7 @@ fn prompt_choose_item_or_confirm_template(
     let answer = Select::new("Select items to modify or confirm the template:", rows)
         .with_page_size(12)
         .with_help_message(
-            "↑↓ to move, enter to select, type to filter\n* Requires nightly compiler",
+            "↑↓ to move, enter to select, type to filter. * Requires nightly compiler, ^ Requires Unix",
         )
         .with_render_config(create_render_config(cli_config))
         .prompt()?;
