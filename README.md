@@ -8,9 +8,9 @@
 
 [crates.io]: https://crates.io/crates/cargo-wizard
 
-**Cargo subcommand that applies predefined Cargo [profile](https://doc.rust-lang.org/cargo/reference/profiles.html)
-and [config](https://doc.rust-lang.org/cargo/reference/config.html#configuration-format) templates to your Cargo
-workspace to get you up to speed quickly.**
+Cargo subcommand that applies [profile](https://doc.rust-lang.org/cargo/reference/profiles.html)
+and [config](https://doc.rust-lang.org/cargo/reference/config.html#configuration-format) templates to your Cargo project
+to configure it for maximum performance, fast compile times or minimal binary size.
 
 ![Demo of cargo-wizard](img/wizard-demo.gif)
 
@@ -95,8 +95,10 @@ Possible future features:
 
 # Acknowledgements
 
-`cargo wizard` uses the incredible [`toml_edit`](https://docs.rs/toml_edit/latest/toml_edit/) crate to keep original
-formatting of the modified TOML files.
+- [`toml_edit`](https://docs.rs/toml_edit/latest/toml_edit/): awesome crate that can modify TOML files while keeping
+  their original formatting.
+- [`inquire`](https://github.com/mikaelmello/inquire): pretty slick crate for building interactive TUI dialogs and
+  prompts.
 
 # License
 [MIT](LICENSE)
