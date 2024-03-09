@@ -64,8 +64,14 @@ set of prepared templates:
 
 You can also modify these templates in the interactive mode to build your own custom template.
 
-> Note that `config.toml` changes are applied to the global `build.hostflags` option, because per-profile Rustflags are
-> still [unstable](https://github.com/rust-lang/cargo/issues/10271).
+## Comments
+
+- The configuration applied by this tool is quite opinionated and might not fit all use-cases
+  perfectly. `cargo-wizard` mostly serves to improve *discoverability* of possible Cargo profile and config options, to
+  help you find the ideal settings for your use-cases.
+- `cargo-wizard` currently ignores Cargo settings that are not relevant to performance.
+- Cargo config (`config.toml`) changes are applied to the global `build.hostflags` setting, because per-profile
+  RUSTFLAGS are still [unstable](https://github.com/rust-lang/cargo/issues/10271).
 
 # Inspiration
 
