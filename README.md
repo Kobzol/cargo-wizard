@@ -43,8 +43,11 @@ $ cargo install cargo-wizard
     $ cargo wizard apply fast-runtime dist
     ```
 
-> You can enable additional configuration options that require a nightly compiler by running `cargo-wizard` with a
-> nightly Cargo (e.g. `cargo +nightly wizard`) or by using the `--nightly` flag.
+You can enable additional configuration options that require a nightly compiler by running `cargo-wizard` with a
+nightly Cargo (e.g. `cargo +nightly wizard`) or by using the `--nightly` flag.
+
+Note that you should be executing `cargo wizard` inside a directory that is a part of a Cargo workspace. It will then
+apply the configuration options to that workspace.
 
 # Features
 `cargo-wizard` can create or modify Cargo profiles in your `Cargo.toml` manifest and RUSTFLAGS in
