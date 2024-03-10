@@ -1,3 +1,9 @@
+# 0.2.1 (10. 3. 2024)
+
+- Add Unix-specific options.
+- Fix cancellation of prompts.
+- Unify colors in dialog.
+
 # 0.2.0 (9. 3. 2024)
 
 - Add interactive dialog.
