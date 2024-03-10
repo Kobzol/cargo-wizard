@@ -43,13 +43,13 @@ $ cargo install cargo-wizard
     $ cargo wizard apply fast-runtime dist
     ```
 
-> You can enable profile/config options that require a nightly compiler by running `cargo-wizard` with a nightly Cargo
-> (e.g. `cargo +nightly wizard`) or by using the `--nightly` flag.
+> You can enable additional configuration options that require a nightly compiler by running `cargo-wizard` with a
+> nightly Cargo (e.g. `cargo +nightly wizard`) or by using the `--nightly` flag.
 
 # Features
 `cargo-wizard` can create or modify Cargo profiles in your `Cargo.toml` manifest and RUSTFLAGS in
 the [`.cargo/config.toml`](https://doc.rust-lang.org/cargo/reference/config.html#configuration-format) file) based on a
-set of prepared templates:
+set of predefined templates:
 
 - **`fast-compile`** - minimizes compilation times
     - Disables debuginfo generation and uses a faster linker.
@@ -58,7 +58,8 @@ set of prepared templates:
       and
       the [parallel frontend](https://nnethercote.github.io/perf-book/build-configuration.html#experimental-parallel-front-end).
 - **`fast-runtime`** - maximizes runtime performance
-    - Enables [LTO](https://doc.rust-lang.org/cargo/reference/profiles.html#lto) and maximal optimization settings.
+    - Enables [LTO](https://doc.rust-lang.org/cargo/reference/profiles.html#lto) and other settings designed to maximize
+      runtime performance.
 - **`min-size`** - minimizes binary size
     - Similar to `fast-runtime`, but uses optimization flags designed for small binary size.
 
