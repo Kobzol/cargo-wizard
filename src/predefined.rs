@@ -5,7 +5,7 @@ use crate::workspace::manifest::BuiltinProfile;
 use crate::{Template, WizardOptions};
 
 /// Enumeration of predefined templates.
-#[derive(clap::ValueEnum, Clone, Debug)]
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
 pub enum PredefinedTemplateKind {
     /// Profile designed for fast compilation times.
     FastCompile,

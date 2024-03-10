@@ -35,18 +35,23 @@ pub fn run_root_dialog(
     let profile = prompt_select_profile(&cli_config, existing_profiles)?;
 
     let template_kind = prompt_select_template(&cli_config)?;
-    let template = template_kind.build_template(&options);
-    let template = prompt_customize_template(&cli_config, &cargo_options, template)?;
+    let mut template = template_kind.build_template(&options);
 
-    let diff_result = prompt_confirm_diff(&cli_config, workspace, &profile, &template)?;
-    match diff_result {
-        ConfirmDiffPromptResponse::Accepted(workspace) => {
-            workspace.write()?;
-            on_template_applied(&cargo_options, template_kind, &template, &profile);
-        }
-        ConfirmDiffPromptResponse::Denied => {}
-        ConfirmDiffPromptResponse::NoDiff => {
-            println!("Nothing to apply, the profile already matched the template");
+    loop {
+        template = prompt_customize_template(&cli_config, &cargo_options, template)?;
+
+        let diff_result = prompt_confirm_diff(&cli_config, workspace.clone(), &profile, &template)?;
+        match diff_result {
+            ConfirmDiffPromptResponse::Accepted(workspace) => {
+                workspace.write()?;
+                on_template_applied(&cargo_options, template_kind, &template, &profile);
+                break;
+            }
+            ConfirmDiffPromptResponse::Denied => {}
+            ConfirmDiffPromptResponse::NoDiff => {
+                println!("Nothing to apply, the profile already matched the template");
+                break;
+            }
         }
     }
 

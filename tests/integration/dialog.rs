@@ -471,10 +471,12 @@ impl DialogBuilder {
             for check in self.final_checks {
                 terminal.expect(&check)?;
             }
+            terminal.wait()?;
         } else {
             terminal.line("n")?;
+            terminal.expect("Select items to modify or confirm the template")?;
         }
-        terminal.wait()
+        Ok(())
     }
 }
 
