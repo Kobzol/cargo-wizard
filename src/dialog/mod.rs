@@ -98,11 +98,20 @@ pub fn on_template_applied(
         println!("⚠️  You will have to use a nightly compiler.");
     }
 
-    if let PredefinedTemplateKind::FastRuntime = template_kind {
-        println!(
-            "Tip: consider using the {} subcommand to further optimize your binary.",
-            utils::command_style().apply_to("cargo-pgo")
-        );
+    match template_kind {
+        PredefinedTemplateKind::FastCompile => {
+            if !requires_nightly {
+                println!("Tip: run `cargo-wizard` with the `{}` flag to discover nightly-only configuration options.",
+                utils::command_style().apply_to("--nightly"));
+            }
+        }
+        PredefinedTemplateKind::FastRuntime => {
+            println!(
+                "Tip: consider using the {} subcommand to further optimize your binary.",
+                utils::command_style().apply_to("cargo-pgo")
+            );
+        }
+        PredefinedTemplateKind::MinSize => {}
     }
     let info_url = match template_kind {
         PredefinedTemplateKind::FastRuntime | PredefinedTemplateKind::FastCompile => {
