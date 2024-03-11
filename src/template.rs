@@ -88,6 +88,7 @@ pub fn release_profile() -> TemplateBuilder {
 pub enum TemplateItemId {
     // Do not forget to modify CargoKnownOptions when adding new variants to this enum
     DebugInfo,
+    SplitDebugInfo,
     Strip,
     Lto,
     CodegenUnits,

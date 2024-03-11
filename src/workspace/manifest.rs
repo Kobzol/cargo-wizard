@@ -216,6 +216,7 @@ impl CargoManifest {
 fn id_to_item_name(id: TemplateItemId) -> Option<&'static str> {
     match id {
         TemplateItemId::DebugInfo => Some("debug"),
+        TemplateItemId::SplitDebugInfo => Some("split-debuginfo"),
         TemplateItemId::Strip => Some("strip"),
         TemplateItemId::Lto => Some("lto"),
         TemplateItemId::CodegenUnits => Some("codegen-units"),
