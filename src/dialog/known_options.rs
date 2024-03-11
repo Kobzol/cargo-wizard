@@ -1,10 +1,14 @@
-use crate::dialog::utils;
-use anyhow::Context;
-use cargo_wizard::{get_core_count, TemplateItemId, TomlValue};
 use std::collections::HashSet;
 use std::env;
 use std::ffi::OsString;
 use std::process::{Command, Stdio};
+
+use anyhow::Context;
+
+use cargo_wizard::{get_core_count, TemplateItemId, TomlValue};
+
+use crate::dialog::utils;
+use crate::dialog::utils::find_program_path;
 
 #[derive(Copy, Clone)]
 pub enum TomlValueKind {
@@ -289,24 +293,35 @@ impl KnownCargoOptions {
                 .requires_nightly()
                 .custom_value(TomlValueKind::Int)
                 .build(),
-            TemplateItemId::Linker => MetadataBuilder::default()
-                .string("LLD", "lld")
-                .string("MOLD", "mold")
-                .requires_unix()
-                .on_applied(|value| {
-                    if let TomlValue::String(linker) = value {
-                        Some(format!(
-                            "⚠️  Do not forget to install the {} linker, e.g. using `{}`.",
-                            utils::command_style().apply_to(linker),
-                            utils::command_style().apply_to(format!("sudo apt install {linker}"))
-                        ))
-                    } else {
-                        None
-                    }
-                })
-                .build(),
+            TemplateItemId::Linker => {
+                MetadataBuilder::default()
+                    .string(&linker_description("lld", "LLD"), "lld")
+                    .string(&linker_description("mold", "MOLD"), "mold")
+                    .requires_unix()
+                    .on_applied(|value| {
+                        if let TomlValue::String(linker) = value {
+                            if find_program_path(linker).is_none() {
+                                Some(format!(
+                                    "⚠️  Do not forget to install the {} linker, e.g. using `{}`.",
+                                    utils::command_style().apply_to(linker),
+                                    utils::command_style().apply_to(format!("sudo apt install {linker}"))
+                                ))
+                            } else { None }
+                        } else {
+                            None
+                        }
+                    })
+                    .build()
+            },
         }
     }
+}
+
+fn linker_description(path: &str, name: &str) -> String {
+    find_program_path(path)
+        .and_then(|p| p.to_str().map(|s| s.to_string()))
+        .map(|s| format!("{name} (found at {s})"))
+        .unwrap_or_else(|| format!("{name} (not found)"))
 }
 
 /// Possible value of a Cargo profile or a Cargo config, along with a description of what it does.

@@ -25,7 +25,7 @@ pub fn prompt_select_template(cli_config: &CliConfig) -> PromptResult<Predefined
         "Select the template that you want to apply:",
         PredefinedTemplateKind::value_variants()
             .iter()
-            .map(|template| Template(template.clone()))
+            .map(|template| Template(*template))
             .collect(),
     )
     .with_render_config(template_render_config(cli_config))
