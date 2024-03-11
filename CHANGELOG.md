@@ -1,4 +1,4 @@
-# Dev
+# 0.2.2 (11. 3. 2024)
 
 - Detect if a linker is installed and don't display warning if it is (https://github.com/Kobzol/cargo-wizard/issues/5).
 - Validate profile name (https://github.com/Kobzol/cargo-wizard/issues/7).
