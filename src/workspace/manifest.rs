@@ -131,15 +131,37 @@ impl CargoManifest {
         };
         let mut values: Vec<_> = template
             .iter_items()
-            .filter(|(id, value)| {
-                let base_item = base_template.as_ref().and_then(|t| t.get_item(*id));
-                match base_item {
-                    Some(val) => &val != value,
-                    None => true,
-                }
-            })
             .filter_map(|(id, value)| {
-                id_to_item_name(id).map(|name| TableItem {
+                let Some(name) = id_to_item_name(id) else {
+                    return None;
+                };
+
+                // Check if there is any existing value in the TOML profile table
+                let existing_value = profile_table.get(name).and_then(|item| {
+                    if let Some(value) = item.as_bool() {
+                        Some(TomlValue::Bool(value))
+                    } else if let Some(value) = item.as_integer() {
+                        Some(TomlValue::Int(value))
+                    } else if let Some(value) = item.as_str() {
+                        Some(TomlValue::String(value.to_string()))
+                    } else {
+                        None
+                    }
+                });
+                // Check if we modify a built-in profile, and if we have a default vaule for this
+                // item in the profile.
+                let default_item = base_template.as_ref().and_then(|t| t.get_item(id).cloned());
+
+                // If we have the same value as the default, and the existing value also matches the
+                // default, skip this item.
+                let base_item = existing_value.or(default_item);
+                if let Some(base_value) = base_item {
+                    if &base_value == value {
+                        return None;
+                    }
+                };
+
+                Some(TableItem {
                     name: name.to_string(),
                     value: value.clone(),
                 })

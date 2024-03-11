@@ -218,11 +218,11 @@ codegen-units    = 10
 
     [profile.dev]
 
-    lto =      "thin"
+    lto =      false
 
     debug = 0   # Foo
 
-    codegen-units    = 10
+    codegen-units    = 256
     "###);
 
     Ok(())
