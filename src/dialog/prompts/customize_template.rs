@@ -150,7 +150,7 @@ impl Display for ItemId {
             TemplateItemId::OptimizationLevel => "Optimization level",
             TemplateItemId::CodegenBackend => "Codegen backend",
             TemplateItemId::TargetCpuInstructionSet => "Target CPU instruction set",
-            TemplateItemId::FrontendThreads => "Amount of frontend threads",
+            TemplateItemId::FrontendThreads => "Number of frontend threads",
             TemplateItemId::Linker => "Linker",
             TemplateItemId::Incremental => "Incremental compilation",
             TemplateItemId::SplitDebugInfo => "Split debug info",

@@ -400,7 +400,7 @@ fn dialog_fast_compile_nightly() -> anyhow::Result<()> {
     DialogBuilder::default()
         .nightly()
         .customize_item(
-            "Amount of frontend threads",
+            "Number of frontend threads",
             CustomValue::Custom("4".to_string()),
         )
         .run(&project)?;

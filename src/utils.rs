@@ -1,6 +1,6 @@
 use std::num::NonZeroUsize;
 
-/// Find the amount of cores on the current device, or return a default of `8`.
+/// Find the number of cores on the current device, or return a default of `8`.
 pub fn get_core_count() -> i64 {
     std::thread::available_parallelism()
         .unwrap_or(NonZeroUsize::new(8).unwrap())
