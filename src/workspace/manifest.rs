@@ -117,14 +117,22 @@ impl CargoManifest {
                 )
             })?;
 
-        let base_template = match template.inherits() {
-            BuiltinProfile::Dev => dev_profile().build(),
-            BuiltinProfile::Release => release_profile().build(),
+        // If we're applying the template to a built-in profile (dev or release), we skip the items
+        // that still have the default value.
+        // However, we don't do that for custom profiles based on dev/release, since dev/release
+        // might not actually contain the default values in that case.
+        let base_template = if profile.is_builtin() {
+            Some(match template.inherits() {
+                BuiltinProfile::Dev => dev_profile().build(),
+                BuiltinProfile::Release => release_profile().build(),
+            })
+        } else {
+            None
         };
         let mut values: Vec<_> = template
             .iter_items()
             .filter(|(id, value)| {
-                let base_item = base_template.get_item(*id);
+                let base_item = base_template.as_ref().and_then(|t| t.get_item(*id));
                 match base_item {
                     Some(val) => &val != value,
                     None => true,

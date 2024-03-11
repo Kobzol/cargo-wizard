@@ -138,7 +138,12 @@ fn apply_missing_custom() -> anyhow::Result<()> {
 
     [profile.custom1]
     inherits = "dev"
+    opt-level = 0
     debug = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     "###);
 
     Ok(())
@@ -172,6 +177,11 @@ debug = 1
     [profile.custom1]
     inherits = "dev"
     debug = 0
+    opt-level = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     "###);
 
     Ok(())
@@ -231,8 +241,12 @@ fn apply_fast_runtime_template() -> anyhow::Result<()> {
 
     [profile.custom]
     inherits = "release"
+    opt-level = 3
+    debug = false
+    strip = "none"
     lto = true
     codegen-units = 1
+    incremental = false
     panic = "abort"
     "###);
 
@@ -258,9 +272,11 @@ fn apply_min_size_template() -> anyhow::Result<()> {
     [profile.custom]
     inherits = "release"
     opt-level = "z"
+    debug = false
     strip = true
     lto = true
     codegen-units = 1
+    incremental = false
     panic = "abort"
     "###);
 

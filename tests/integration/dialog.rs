@@ -124,6 +124,11 @@ debug = 1
     [profile.custom1]
     inherits = "dev"
     debug = 0
+    opt-level = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     "###);
 
     Ok(())
@@ -146,7 +151,12 @@ fn dialog_fast_compile_to_new_profile() -> anyhow::Result<()> {
 
     [profile.custom1]
     inherits = "dev"
+    opt-level = 0
     debug = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     "###);
 
     Ok(())
