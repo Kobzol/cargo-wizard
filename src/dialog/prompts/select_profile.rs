@@ -1,10 +1,14 @@
+use std::fmt::{Display, Formatter};
+
+use inquire::ui::{Color, RenderConfig};
+use inquire::validator::{ErrorMessage, Validation};
+use inquire::{Select, Text};
+
+use cargo_wizard::Profile;
+
 use crate::cli::CliConfig;
 use crate::dialog::utils::{colorize_render_config, create_render_config};
 use crate::dialog::PromptResult;
-use cargo_wizard::Profile;
-use inquire::ui::{Color, RenderConfig};
-use inquire::{min_length, Select, Text};
-use std::fmt::{Display, Formatter};
 
 pub fn prompt_select_profile(
     cli_config: &CliConfig,
@@ -58,7 +62,23 @@ pub fn prompt_select_profile(
 
 fn prompt_enter_profile_name(cli_config: &CliConfig) -> PromptResult<Profile> {
     let profile = Text::new("Select profile name:")
-        .with_validator(min_length!(1))
+        .with_validator(|input: &str| {
+            if input.is_empty() {
+                return Ok(Validation::Invalid(ErrorMessage::Custom(
+                    "Profile name must not be empty".to_string(),
+                )));
+            } else if !input
+                .chars()
+                .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+            {
+                // Yes, Cargo does allow any unicode alphabet char or digit :)
+                return Ok(Validation::Invalid(ErrorMessage::Custom(
+                    "Profile name may contain only letters, numbers, underscore and hyphen"
+                        .to_string(),
+                )));
+            }
+            Ok(Validation::Valid)
+        })
         .with_render_config(profile_render_config(cli_config))
         .prompt()?;
     let profile = match profile.as_str() {

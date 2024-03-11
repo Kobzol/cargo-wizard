@@ -5,7 +5,7 @@ use std::process::{Command, Output, Stdio};
 use tempfile::TempDir;
 
 #[cfg(target_os = "linux")]
-mod terminal;
+pub mod terminal;
 
 pub struct CargoProject {
     _name: String,
