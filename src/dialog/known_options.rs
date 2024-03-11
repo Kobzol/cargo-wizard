@@ -1,10 +1,14 @@
-use crate::dialog::utils;
-use anyhow::Context;
-use cargo_wizard::{get_core_count, TemplateItemId, TomlValue};
 use std::collections::HashSet;
 use std::env;
 use std::ffi::OsString;
 use std::process::{Command, Stdio};
+
+use anyhow::Context;
+
+use cargo_wizard::{get_core_count, TemplateItemId, TomlValue};
+
+use crate::dialog::utils;
+use crate::dialog::utils::find_program_path;
 
 #[derive(Copy, Clone)]
 pub enum TomlValueKind {
@@ -295,11 +299,13 @@ impl KnownCargoOptions {
                 .requires_unix()
                 .on_applied(|value| {
                     if let TomlValue::String(linker) = value {
-                        Some(format!(
-                            "⚠️  Do not forget to install the {} linker, e.g. using `{}`.",
-                            utils::command_style().apply_to(linker),
-                            utils::command_style().apply_to(format!("sudo apt install {linker}"))
-                        ))
+                        if find_program_path(&linker).is_none() {
+                            Some(format!(
+                                "⚠️  Do not forget to install the {} linker, e.g. using `{}`.",
+                                utils::command_style().apply_to(linker),
+                                utils::command_style().apply_to(format!("sudo apt install {linker}"))
+                            ))
+                        } else { None }
                     } else {
                         None
                     }

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use console::Style;
 use inquire::ui::RenderConfig;
 
@@ -60,4 +62,9 @@ pub fn profile_from_str(text: &str) -> Result<Profile, String> {
         custom => Profile::Custom(custom.to_string()),
     };
     Ok(profile)
+}
+
+/// Quick check if a program with the given name can be found.
+pub fn find_program_path(name: &str) -> Option<PathBuf> {
+    which::which(name).ok()
 }
