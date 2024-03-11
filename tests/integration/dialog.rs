@@ -1,3 +1,4 @@
+use crate::utils::terminal::Terminal;
 use crate::utils::{init_cargo_project, CargoProject};
 
 #[test]
@@ -152,6 +153,26 @@ fn dialog_fast_compile_to_new_profile() -> anyhow::Result<()> {
     "###);
 
     Ok(())
+}
+
+#[test]
+fn dialog_empty_profile_name() -> anyhow::Result<()> {
+    let project = init_cargo_project()?;
+
+    let mut terminal = DialogBuilder::default().start(&project)?;
+    terminal.select_line("<Create a new profile>")?;
+    terminal.line("")?;
+    terminal.expect("Profile name must not be empty")
+}
+
+#[test]
+fn dialog_invalid_profile_name() -> anyhow::Result<()> {
+    let project = init_cargo_project()?;
+
+    let mut terminal = DialogBuilder::default().start(&project)?;
+    terminal.select_line("<Create a new profile>")?;
+    terminal.line("#")?;
+    terminal.expect("Profile name may contain only letters, numbers, underscore and hyphen")
 }
 
 #[test]
@@ -421,14 +442,19 @@ impl DialogBuilder {
         self
     }
 
-    fn run(self, project: &CargoProject) -> anyhow::Result<()> {
+    fn start(&self, project: &CargoProject) -> anyhow::Result<Terminal> {
         let nightly = match self.nightly {
             true => "on",
             false => "off",
         };
-        let mut terminal = project
+        let terminal = project
             .cmd(&[&format!("--nightly={nightly}")])
             .start_terminal()?;
+        Ok(terminal)
+    }
+
+    fn run(self, project: &CargoProject) -> anyhow::Result<()> {
+        let mut terminal = self.start(project)?;
         // Select profile
         terminal.expect("Select the profile that you want to update/create")?;
         terminal.select_line(&self.profile)?;
