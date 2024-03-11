@@ -2,6 +2,9 @@
 
 - Detect if a linker is installed and don't display warning if it is (https://github.com/Kobzol/cargo-wizard/issues/5).
 - Validate profile name (https://github.com/Kobzol/cargo-wizard/issues/7).
+- Add support for the `incremental` profile attribute.
+- Set all performance-related default properties from the base profile (dev/release) on
+  templates (https://github.com/Kobzol/cargo-wizard/issues/4).
 
 # 0.2.1 (10. 3. 2024)
 

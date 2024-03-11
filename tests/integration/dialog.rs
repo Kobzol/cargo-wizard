@@ -7,7 +7,6 @@ fn dialog_fast_compile_to_dev() -> anyhow::Result<()> {
     apply_profile(&project, "FastCompile", "dev")?;
 
     insta::assert_snapshot!(project.read_manifest(), @r###"
-
     [package]
     name = "foo"
     version = "0.1.0"
@@ -26,6 +25,81 @@ fn dialog_fast_compile_to_dev() -> anyhow::Result<()> {
 }
 
 #[test]
+fn dialog_skip_default_value_for_dev() -> anyhow::Result<()> {
+    let project = init_cargo_project()?;
+    apply_profile(&project, "FastCompile", "dev")?;
+
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.dev]
+    debug = 0
+    "###);
+
+    Ok(())
+}
+
+#[test]
+fn dialog_do_not_skip_default_value_for_custom_profile() -> anyhow::Result<()> {
+    let project = init_cargo_project()?;
+    DialogBuilder::default()
+        .template("FastCompile")
+        .create_profile("foo")
+        .run(&project)?;
+
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.foo]
+    inherits = "dev"
+    opt-level = 0
+    debug = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
+    "###);
+
+    Ok(())
+}
+
+#[test]
+fn dialog_set_modified_default_for_dev() -> anyhow::Result<()> {
+    let mut project = init_cargo_project()?;
+    project.manifest(
+        r#"[package]
+name = "foo"
+version = "0.1.0"
+edition = "2021"
+
+[profile.dev]
+incremental = false
+"#,
+    );
+
+    apply_profile(&project, "FastCompile", "dev")?;
+
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.dev]
+    incremental = true
+    debug = 0
+    "###);
+
+    Ok(())
+}
+
+#[test]
 fn dialog_min_size_to_release() -> anyhow::Result<()> {
     let project = init_cargo_project()?;
 
@@ -38,10 +112,9 @@ fn dialog_min_size_to_release() -> anyhow::Result<()> {
     edition = "2021"
 
     [profile.release]
-    debug = 0
+    opt-level = "z"
     strip = true
     lto = true
-    opt-level = "z"
     codegen-units = 1
     panic = "abort"
     "###);
@@ -126,6 +199,11 @@ debug = 1
     [profile.custom1]
     inherits = "dev"
     debug = 0
+    opt-level = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     "###);
 
     Ok(())
@@ -141,7 +219,6 @@ fn dialog_fast_compile_to_new_profile() -> anyhow::Result<()> {
         .run(&project)?;
 
     insta::assert_snapshot!(project.read_manifest(), @r###"
-
     [package]
     name = "foo"
     version = "0.1.0"
@@ -149,7 +226,12 @@ fn dialog_fast_compile_to_new_profile() -> anyhow::Result<()> {
 
     [profile.custom1]
     inherits = "dev"
+    opt-level = 0
     debug = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     "###);
 
     Ok(())

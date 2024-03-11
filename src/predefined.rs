@@ -1,7 +1,6 @@
-use crate::template::{TemplateBuilder, TemplateItemId};
+use crate::template::{dev_profile, release_profile, TemplateItemId};
 use crate::toml::TomlValue;
 use crate::utils::get_core_count;
-use crate::workspace::manifest::BuiltinProfile;
 use crate::{Template, WizardOptions};
 
 /// Enumeration of predefined templates.
@@ -27,8 +26,7 @@ impl PredefinedTemplateKind {
 
 /// Template that focuses on quick compile time.
 pub fn fast_compile_template(options: &WizardOptions) -> Template {
-    let mut builder = TemplateBuilder::new(BuiltinProfile::Dev)
-        .item(TemplateItemId::DebugInfo, TomlValue::int(0));
+    let mut builder = dev_profile().item(TemplateItemId::DebugInfo, TomlValue::int(0));
 
     #[cfg(unix)]
     {
@@ -51,7 +49,7 @@ pub fn fast_compile_template(options: &WizardOptions) -> Template {
 
 /// Template that focuses on maximum runtime performance.
 pub fn fast_runtime_template() -> Template {
-    TemplateBuilder::new(BuiltinProfile::Release)
+    release_profile()
         .item(TemplateItemId::Lto, TomlValue::bool(true))
         .item(TemplateItemId::CodegenUnits, TomlValue::int(1))
         .item(TemplateItemId::Panic, TomlValue::string("abort"))
@@ -64,8 +62,8 @@ pub fn fast_runtime_template() -> Template {
 
 /// Template that template focuses on minimal binary size.
 pub fn min_size_template() -> Template {
-    TemplateBuilder::new(BuiltinProfile::Release)
-        .item(TemplateItemId::DebugInfo, TomlValue::int(0))
+    release_profile()
+        .item(TemplateItemId::DebugInfo, TomlValue::bool(false))
         .item(TemplateItemId::Strip, TomlValue::bool(true))
         .item(TemplateItemId::Lto, TomlValue::bool(true))
         .item(TemplateItemId::OptimizationLevel, TomlValue::string("z"))

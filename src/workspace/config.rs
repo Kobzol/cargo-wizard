@@ -57,7 +57,8 @@ impl CargoConfig {
                     | TemplateItemId::CodegenUnits
                     | TemplateItemId::Panic
                     | TemplateItemId::OptimizationLevel
-                    | TemplateItemId::CodegenBackend => None,
+                    | TemplateItemId::CodegenBackend
+                    | TemplateItemId::Incremental => None,
                 }
             })
             .collect();

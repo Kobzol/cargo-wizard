@@ -152,6 +152,7 @@ impl Display for ItemId {
             TemplateItemId::TargetCpuInstructionSet => "Target CPU instruction set",
             TemplateItemId::FrontendThreads => "Amount of frontend threads",
             TemplateItemId::Linker => "Linker",
+            TemplateItemId::Incremental => "Incremental compilation",
         };
         f.write_str(description)
     }

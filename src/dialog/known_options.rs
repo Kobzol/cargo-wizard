@@ -219,6 +219,7 @@ impl KnownCargoOptions {
             TemplateItemId::Panic,
             TemplateItemId::DebugInfo,
             TemplateItemId::Strip,
+            TemplateItemId::Incremental,
             TemplateItemId::Linker,
             TemplateItemId::CodegenBackend,
             TemplateItemId::FrontendThreads,
@@ -313,6 +314,10 @@ impl KnownCargoOptions {
                     })
                     .build()
             },
+            TemplateItemId::Incremental => MetadataBuilder::default()
+                .bool("Enable", true)
+                .bool("Disable", false)
+                .build()
         }
     }
 }

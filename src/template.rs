@@ -48,7 +48,7 @@ impl TemplateBuilder {
     }
 
     pub fn item(mut self, id: TemplateItemId, value: TomlValue) -> Self {
-        assert!(self.profile.insert(id, value).is_none());
+        self.profile.insert(id, value);
         self
     }
 
@@ -61,6 +61,28 @@ impl TemplateBuilder {
     }
 }
 
+/// Default properties of the dev profile.
+pub fn dev_profile() -> TemplateBuilder {
+    TemplateBuilder::new(BuiltinProfile::Dev)
+        .item(TemplateItemId::OptimizationLevel, TomlValue::Int(0))
+        .item(TemplateItemId::DebugInfo, TomlValue::Bool(true))
+        .item(TemplateItemId::Strip, TomlValue::String("none".to_string()))
+        .item(TemplateItemId::Lto, TomlValue::Bool(false))
+        .item(TemplateItemId::CodegenUnits, TomlValue::Int(256))
+        .item(TemplateItemId::Incremental, TomlValue::Bool(true))
+}
+
+/// Default properties of the release profile.
+pub fn release_profile() -> TemplateBuilder {
+    TemplateBuilder::new(BuiltinProfile::Release)
+        .item(TemplateItemId::OptimizationLevel, TomlValue::Int(3))
+        .item(TemplateItemId::DebugInfo, TomlValue::Bool(false))
+        .item(TemplateItemId::Strip, TomlValue::String("none".to_string()))
+        .item(TemplateItemId::Lto, TomlValue::Bool(false))
+        .item(TemplateItemId::CodegenUnits, TomlValue::Int(16))
+        .item(TemplateItemId::Incremental, TomlValue::Bool(false))
+}
+
 /// Identifier of a specific item of a template.
 #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
 pub enum TemplateItemId {
@@ -71,6 +93,7 @@ pub enum TemplateItemId {
     CodegenUnits,
     Panic,
     OptimizationLevel,
+    Incremental,
     CodegenBackend,
     FrontendThreads,
     TargetCpuInstructionSet,

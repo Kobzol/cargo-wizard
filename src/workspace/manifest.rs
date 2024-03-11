@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Context;
 use toml_edit::{table, value, Array, Document, Item, Value};
 
-use crate::template::TemplateItemId;
+use crate::template::{dev_profile, release_profile, TemplateItemId};
 use crate::{Template, TomlValue};
 
 /// Tries to resolve the workspace root manifest (Cargo.toml) path from the current directory.
@@ -117,10 +117,51 @@ impl CargoManifest {
                 )
             })?;
 
-        let mut values: Vec<TableItem> = template
+        // If we're applying the template to a built-in profile (dev or release), we skip the items
+        // that still have the default value.
+        // However, we don't do that for custom profiles based on dev/release, since dev/release
+        // might not actually contain the default values in that case.
+        let base_template = if profile.is_builtin() {
+            Some(match template.inherits() {
+                BuiltinProfile::Dev => dev_profile().build(),
+                BuiltinProfile::Release => release_profile().build(),
+            })
+        } else {
+            None
+        };
+        let mut values: Vec<_> = template
             .iter_items()
             .filter_map(|(id, value)| {
-                id_to_item_name(id).map(|name| TableItem {
+                let Some(name) = id_to_item_name(id) else {
+                    return None;
+                };
+
+                // Check if there is any existing value in the TOML profile table
+                let existing_value = profile_table.get(name).and_then(|item| {
+                    if let Some(value) = item.as_bool() {
+                        Some(TomlValue::Bool(value))
+                    } else if let Some(value) = item.as_integer() {
+                        Some(TomlValue::Int(value))
+                    } else if let Some(value) = item.as_str() {
+                        Some(TomlValue::String(value.to_string()))
+                    } else {
+                        None
+                    }
+                });
+                // Check if we modify a built-in profile, and if we have a default vaule for this
+                // item in the profile.
+                let default_item = base_template.as_ref().and_then(|t| t.get_item(id).cloned());
+
+                // If we have the same value as the default, and the existing value also matches the
+                // default, skip this item.
+                let base_item = existing_value.or(default_item);
+                if let Some(base_value) = base_item {
+                    if &base_value == value {
+                        return None;
+                    }
+                };
+
+                Some(TableItem {
                     name: name.to_string(),
                     value: value.clone(),
                 })
@@ -181,6 +222,7 @@ fn id_to_item_name(id: TemplateItemId) -> Option<&'static str> {
         TemplateItemId::Panic => Some("panic"),
         TemplateItemId::OptimizationLevel => Some("opt-level"),
         TemplateItemId::CodegenBackend => Some("codegen-backend"),
+        TemplateItemId::Incremental => Some("incremental"),
         TemplateItemId::TargetCpuInstructionSet
         | TemplateItemId::FrontendThreads
         | TemplateItemId::Linker => None,
