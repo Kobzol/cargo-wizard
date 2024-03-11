@@ -218,6 +218,7 @@ impl KnownCargoOptions {
             TemplateItemId::TargetCpuInstructionSet,
             TemplateItemId::Panic,
             TemplateItemId::DebugInfo,
+            TemplateItemId::SplitDebugInfo,
             TemplateItemId::Strip,
             TemplateItemId::Incremental,
             TemplateItemId::Linker,
@@ -317,6 +318,11 @@ impl KnownCargoOptions {
             TemplateItemId::Incremental => MetadataBuilder::default()
                 .bool("Enable", true)
                 .bool("Disable", false)
+                .build(),
+            TemplateItemId::SplitDebugInfo => MetadataBuilder::default()
+                .string("Off", "off")
+                .string("Packed debuginfo", "packed")
+                .string("Unpacked debuginfo", "unpacked")
                 .build()
         }
     }

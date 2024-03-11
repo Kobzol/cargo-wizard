@@ -153,6 +153,7 @@ impl Display for ItemId {
             TemplateItemId::FrontendThreads => "Amount of frontend threads",
             TemplateItemId::Linker => "Linker",
             TemplateItemId::Incremental => "Incremental compilation",
+            TemplateItemId::SplitDebugInfo => "Split debug info",
         };
         f.write_str(description)
     }

@@ -58,7 +58,8 @@ impl CargoConfig {
                     | TemplateItemId::Panic
                     | TemplateItemId::OptimizationLevel
                     | TemplateItemId::CodegenBackend
-                    | TemplateItemId::Incremental => None,
+                    | TemplateItemId::Incremental
+                    | TemplateItemId::SplitDebugInfo => None,
                 }
             })
             .collect();
