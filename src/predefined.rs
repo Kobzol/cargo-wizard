@@ -1,7 +1,6 @@
-use crate::template::{TemplateBuilder, TemplateItemId};
+use crate::template::{dev_profile, release_profile, TemplateItemId};
 use crate::toml::TomlValue;
 use crate::utils::get_core_count;
-use crate::workspace::manifest::BuiltinProfile;
 use crate::{Template, WizardOptions};
 
 /// Enumeration of predefined templates.
@@ -23,26 +22,6 @@ impl PredefinedTemplateKind {
             PredefinedTemplateKind::MinSize => min_size_template(),
         }
     }
-}
-
-fn dev_profile() -> TemplateBuilder {
-    TemplateBuilder::new(BuiltinProfile::Dev)
-        .item(TemplateItemId::OptimizationLevel, TomlValue::Int(0))
-        .item(TemplateItemId::DebugInfo, TomlValue::Bool(true))
-        .item(TemplateItemId::Strip, TomlValue::String("none".to_string()))
-        .item(TemplateItemId::Lto, TomlValue::Bool(false))
-        .item(TemplateItemId::CodegenUnits, TomlValue::Int(256))
-        .item(TemplateItemId::Incremental, TomlValue::Bool(true))
-}
-
-fn release_profile() -> TemplateBuilder {
-    TemplateBuilder::new(BuiltinProfile::Release)
-        .item(TemplateItemId::OptimizationLevel, TomlValue::Int(3))
-        .item(TemplateItemId::DebugInfo, TomlValue::Bool(false))
-        .item(TemplateItemId::Strip, TomlValue::String("none".to_string()))
-        .item(TemplateItemId::Lto, TomlValue::Bool(false))
-        .item(TemplateItemId::CodegenUnits, TomlValue::Int(16))
-        .item(TemplateItemId::Incremental, TomlValue::Bool(false))
 }
 
 /// Template that focuses on quick compile time.

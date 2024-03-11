@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Context;
 use toml_edit::{table, value, Array, Document, Item, Value};
 
-use crate::template::TemplateItemId;
+use crate::template::{dev_profile, release_profile, TemplateItemId};
 use crate::{Template, TomlValue};
 
 /// Tries to resolve the workspace root manifest (Cargo.toml) path from the current directory.
@@ -117,8 +117,19 @@ impl CargoManifest {
                 )
             })?;
 
-        let mut values: Vec<TableItem> = template
+        let base_template = match template.inherits() {
+            BuiltinProfile::Dev => dev_profile().build(),
+            BuiltinProfile::Release => release_profile().build(),
+        };
+        let mut values: Vec<_> = template
             .iter_items()
+            .filter(|(id, value)| {
+                let base_item = base_template.get_item(*id);
+                match base_item {
+                    Some(val) => &val != value,
+                    None => true,
+                }
+            })
             .filter_map(|(id, value)| {
                 id_to_item_name(id).map(|name| TableItem {
                     name: name.to_string(),
