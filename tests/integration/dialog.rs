@@ -7,14 +7,18 @@ fn dialog_fast_compile_to_dev() -> anyhow::Result<()> {
     apply_profile(&project, "FastCompile", "dev")?;
 
     insta::assert_snapshot!(project.read_manifest(), @r###"
-
     [package]
     name = "foo"
     version = "0.1.0"
     edition = "2021"
 
     [profile.dev]
+    opt-level = 0
     debug = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     "###);
 
     insta::assert_snapshot!(project.read_config(), @r###"
@@ -38,11 +42,12 @@ fn dialog_min_size_to_release() -> anyhow::Result<()> {
     edition = "2021"
 
     [profile.release]
-    debug = 0
+    opt-level = "z"
+    debug = false
     strip = true
     lto = true
-    opt-level = "z"
     codegen-units = 1
+    incremental = false
     panic = "abort"
     "###);
 
@@ -126,6 +131,11 @@ debug = 1
     [profile.custom1]
     inherits = "dev"
     debug = 0
+    opt-level = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     "###);
 
     Ok(())
@@ -141,7 +151,6 @@ fn dialog_fast_compile_to_new_profile() -> anyhow::Result<()> {
         .run(&project)?;
 
     insta::assert_snapshot!(project.read_manifest(), @r###"
-
     [package]
     name = "foo"
     version = "0.1.0"
@@ -149,7 +158,12 @@ fn dialog_fast_compile_to_new_profile() -> anyhow::Result<()> {
 
     [profile.custom1]
     inherits = "dev"
+    opt-level = 0
     debug = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     "###);
 
     Ok(())
@@ -245,7 +259,12 @@ fn dialog_codegen_backend_add_cargo_features() -> anyhow::Result<()> {
     edition = "2021"
 
     [profile.dev]
+    opt-level = 0
     debug = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     codegen-backend = "cranelift"
     "###);
 
@@ -278,7 +297,12 @@ edition = "2021"
     edition = "2021"
 
     [profile.dev]
+    opt-level = 0
     debug = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     codegen-backend = "cranelift"
     "###);
 
@@ -331,7 +355,12 @@ fn dialog_fast_compile_nightly() -> anyhow::Result<()> {
     edition = "2021"
 
     [profile.dev]
+    opt-level = 0
     debug = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     codegen-backend = "cranelift"
     "###);
 
@@ -359,8 +388,12 @@ fn dialog_unset_item() -> anyhow::Result<()> {
     edition = "2021"
 
     [profile.dev]
+    opt-level = 3
+    debug = false
+    strip = "none"
     lto = true
     codegen-units = 1
+    incremental = false
     "###);
 
     Ok(())

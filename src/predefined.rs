@@ -25,10 +25,29 @@ impl PredefinedTemplateKind {
     }
 }
 
+fn dev_profile() -> TemplateBuilder {
+    TemplateBuilder::new(BuiltinProfile::Dev)
+        .item(TemplateItemId::OptimizationLevel, TomlValue::Int(0))
+        .item(TemplateItemId::DebugInfo, TomlValue::Bool(true))
+        .item(TemplateItemId::Strip, TomlValue::String("none".to_string()))
+        .item(TemplateItemId::Lto, TomlValue::Bool(false))
+        .item(TemplateItemId::CodegenUnits, TomlValue::Int(256))
+        .item(TemplateItemId::Incremental, TomlValue::Bool(true))
+}
+
+fn release_profile() -> TemplateBuilder {
+    TemplateBuilder::new(BuiltinProfile::Release)
+        .item(TemplateItemId::OptimizationLevel, TomlValue::Int(3))
+        .item(TemplateItemId::DebugInfo, TomlValue::Bool(false))
+        .item(TemplateItemId::Strip, TomlValue::String("none".to_string()))
+        .item(TemplateItemId::Lto, TomlValue::Bool(false))
+        .item(TemplateItemId::CodegenUnits, TomlValue::Int(16))
+        .item(TemplateItemId::Incremental, TomlValue::Bool(false))
+}
+
 /// Template that focuses on quick compile time.
 pub fn fast_compile_template(options: &WizardOptions) -> Template {
-    let mut builder = TemplateBuilder::new(BuiltinProfile::Dev)
-        .item(TemplateItemId::DebugInfo, TomlValue::int(0));
+    let mut builder = dev_profile().item(TemplateItemId::DebugInfo, TomlValue::int(0));
 
     #[cfg(unix)]
     {
@@ -51,7 +70,7 @@ pub fn fast_compile_template(options: &WizardOptions) -> Template {
 
 /// Template that focuses on maximum runtime performance.
 pub fn fast_runtime_template() -> Template {
-    TemplateBuilder::new(BuiltinProfile::Release)
+    release_profile()
         .item(TemplateItemId::Lto, TomlValue::bool(true))
         .item(TemplateItemId::CodegenUnits, TomlValue::int(1))
         .item(TemplateItemId::Panic, TomlValue::string("abort"))
@@ -64,8 +83,8 @@ pub fn fast_runtime_template() -> Template {
 
 /// Template that template focuses on minimal binary size.
 pub fn min_size_template() -> Template {
-    TemplateBuilder::new(BuiltinProfile::Release)
-        .item(TemplateItemId::DebugInfo, TomlValue::int(0))
+    release_profile()
+        .item(TemplateItemId::DebugInfo, TomlValue::bool(false))
         .item(TemplateItemId::Strip, TomlValue::bool(true))
         .item(TemplateItemId::Lto, TomlValue::bool(true))
         .item(TemplateItemId::OptimizationLevel, TomlValue::string("z"))

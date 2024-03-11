@@ -48,7 +48,7 @@ impl TemplateBuilder {
     }
 
     pub fn item(mut self, id: TemplateItemId, value: TomlValue) -> Self {
-        assert!(self.profile.insert(id, value).is_none());
+        self.profile.insert(id, value);
         self
     }
 

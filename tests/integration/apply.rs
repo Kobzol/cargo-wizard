@@ -33,7 +33,12 @@ edition = "2021"
     edition = "2021"
 
     [profile.dev]
+    opt-level = 0
     debug = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     "###);
 
     Ok(())
@@ -65,12 +70,18 @@ members = ["bar"]
         .run()?
         .assert_ok();
     insta::assert_snapshot!(project.read_manifest(), @r###"
+
     [workspace]
     members = ["bar"]
 
     [profile.dev]
+    opt-level = 0
     debug = 0
-"###);
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
+    "###);
 
     Ok(())
 }
@@ -87,7 +98,12 @@ fn apply_missing_builtin() -> anyhow::Result<()> {
     edition = "2021"
 
     [profile.dev]
+    opt-level = 0
     debug = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     "###);
 
     Ok(())
@@ -111,6 +127,7 @@ debug = 1
 
     apply(&project, "dev", "fast-compile")?;
     insta::assert_snapshot!(project.read_manifest(), @r###"
+
     [package]
     name = "foo"
     version = "0.1.0"
@@ -118,6 +135,11 @@ debug = 1
 
     [profile.dev]
     debug = 0
+    opt-level = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     "###);
 
     Ok(())
@@ -136,7 +158,12 @@ fn apply_missing_custom() -> anyhow::Result<()> {
 
     [profile.custom1]
     inherits = "dev"
+    opt-level = 0
     debug = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     "###);
 
     Ok(())
@@ -161,6 +188,7 @@ debug = 1
 
     apply(&project, "custom1", "fast-compile")?;
     insta::assert_snapshot!(project.read_manifest(), @r###"
+
     [package]
     name = "foo"
     version = "0.1.0"
@@ -169,6 +197,11 @@ debug = 1
     [profile.custom1]
     inherits = "dev"
     debug = 0
+    opt-level = 0
+    strip = "none"
+    lto = false
+    codegen-units = 256
+    incremental = true
     "###);
 
     Ok(())
@@ -205,11 +238,14 @@ codegen-units    = 10
 
     [profile.dev]
 
-    lto =      "thin"
+    lto =      false
 
     debug = 0   # Foo
 
-    codegen-units    = 10
+    codegen-units    = 256
+    opt-level = 0
+    strip = "none"
+    incremental = true
     "###);
 
     Ok(())
@@ -221,7 +257,6 @@ fn apply_fast_runtime_template() -> anyhow::Result<()> {
 
     apply(&project, "custom", "fast-runtime")?;
     insta::assert_snapshot!(project.read_manifest(), @r###"
-
     [package]
     name = "foo"
     version = "0.1.0"
@@ -229,8 +264,12 @@ fn apply_fast_runtime_template() -> anyhow::Result<()> {
 
     [profile.custom]
     inherits = "release"
+    opt-level = 3
+    debug = false
+    strip = "none"
     lto = true
     codegen-units = 1
+    incremental = false
     panic = "abort"
     "###);
 
@@ -248,7 +287,6 @@ fn apply_min_size_template() -> anyhow::Result<()> {
 
     apply(&project, "custom", "min-size")?;
     insta::assert_snapshot!(project.read_manifest(), @r###"
-
     [package]
     name = "foo"
     version = "0.1.0"
@@ -256,11 +294,12 @@ fn apply_min_size_template() -> anyhow::Result<()> {
 
     [profile.custom]
     inherits = "release"
-    debug = 0
+    opt-level = "z"
+    debug = false
     strip = true
     lto = true
-    opt-level = "z"
     codegen-units = 1
+    incremental = false
     panic = "abort"
     "###);
 
