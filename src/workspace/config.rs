@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use crate::{Template, TemplateItemId, TomlValue};
@@ -75,15 +75,41 @@ impl CargoConfig {
             .ok_or_else(|| anyhow::anyhow!("The build item in config.toml is not a table"))?;
         let flags = build.entry("rustflags").or_insert(value(Array::new()));
 
+        let flag_map: HashMap<_, _> = rustflags
+            .iter()
+            .filter_map(|rustflag| {
+                let Some((key, value)) = rustflag.split_once('=') else {
+                    return None;
+                };
+                Some((key.to_string(), value.to_string()))
+            })
+            .collect();
+
         // build.rustflags can be either a string or an array of strings
         if let Some(array) = flags.as_array_mut() {
-            let existing_strings: HashSet<String> = array
+            // Find flags with the same key (e.g. -Ckey=val) and replace their values, to avoid
+            // duplicating the keys.
+            for item in array.iter_mut() {
+                if let Some(val) = item.as_str() {
+                    if let Some((key, _)) = val.split_once('=') {
+                        if let Some(new_value) = flag_map.get(key) {
+                            let decor = item.decor().clone();
+                            let mut new_value =
+                                Value::String(Formatted::new(format!("{key}={new_value}")));
+                            *new_value.decor_mut() = decor;
+                            *item = new_value;
+                        }
+                    }
+                }
+            }
+
+            let existing_flags: HashSet<String> = array
                 .iter()
                 .filter_map(|v| v.as_str())
                 .map(|s| s.to_string())
                 .collect();
             for arg in rustflags {
-                if !existing_strings.contains(&arg) {
+                if !existing_flags.contains(&arg) {
                     array.push(Value::String(Formatted::new(arg)));
                 }
             }
@@ -219,6 +245,31 @@ rustflags = "-Cfoo=bar" # Foo
         insta::assert_snapshot!(config.get_text(), @r###"
         [build]
         rustflags = "-Cfoo=bar -Ctarget-cpu=native" # Foo
+        "###);
+    }
+
+    #[test]
+    fn replace_rustflag_value() {
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
+        let config = create_config(
+            r#"
+[build]
+rustflags = [
+    # Foo
+    "-Ctarget-cpu=foo", # Foo
+    "-Cbar=baz", # Foo
+]
+"#,
+        );
+        let config = config.apply_template(&template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+
+        [build]
+        rustflags = [
+            # Foo
+            "-Ctarget-cpu=native", # Foo
+            "-Cbar=baz", # Foo
+        ]
         "###);
     }
 

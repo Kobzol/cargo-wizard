@@ -6,6 +6,7 @@
 - Set all performance-related default properties from the base profile (dev/release) on
   templates (https://github.com/Kobzol/cargo-wizard/issues/4).
 - Add support for the `split-debuginfo` profile attribute.
+- Improve overwriting of RUSTFLAGS in `.cargo/config.toml` (https://github.com/Kobzol/cargo-wizard/issues/6).
 
 # 0.2.1 (10. 3. 2024)
 
