@@ -51,19 +51,19 @@ apply the configuration options to that workspace.
 
 # Features
 `cargo-wizard` can create or modify Cargo profiles in your `Cargo.toml` manifest and RUSTFLAGS in
-the [`.cargo/config.toml`](https://doc.rust-lang.org/cargo/reference/config.html#configuration-format) file) based on a
+the [`.cargo/config.toml`](https://doc.rust-lang.org/cargo/reference/config.html#configuration-format) file, based on a
 set of predefined templates:
 
-- **`fast-compile`** - minimizes compilation times
+- `fast-compile` - minimizes compilation times
     - Disables debuginfo generation and uses a faster linker.
     - In nightly mode, it also enables
       the [Cranelift codegen backend](https://nnethercote.github.io/perf-book/build-configuration.html#cranelift-codegen-back-end)
       and
       the [parallel frontend](https://nnethercote.github.io/perf-book/build-configuration.html#experimental-parallel-front-end).
-- **`fast-runtime`** - maximizes runtime performance
+- `fast-runtime` - maximizes runtime performance
     - Enables [LTO](https://doc.rust-lang.org/cargo/reference/profiles.html#lto) and other settings designed to maximize
       runtime performance.
-- **`min-size`** - minimizes binary size
+- `min-size` - minimizes binary size
     - Similar to `fast-runtime`, but uses optimization flags designed for small binary size.
 
 You can also modify these templates in the interactive mode to build your own custom template.
