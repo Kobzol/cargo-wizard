@@ -4,6 +4,7 @@ use std::ffi::OsString;
 use std::process::{Command, Stdio};
 
 use anyhow::Context;
+use console::Style;
 
 use cargo_wizard::{get_core_count, TemplateItemId, TomlValue};
 
@@ -269,6 +270,15 @@ impl KnownCargoOptions {
                 .custom_value(CustomPossibleValue {
                     kind: TomlValueKind::String,
                     possible_entries: self.cpu_list.clone(),
+                })
+                .on_applied(|value| {
+                    let TomlValue::String(value) = value else { return None; };
+                    if value == "native" {
+                        Some(format!("⚠️  You are using {}. Code compiled using this flag might not work on other machines! Be careful if you distribute binaries compiled using this flag.",
+                                     Style::new().blue().apply_to("-Ctarget-cpu=native")))
+                    } else {
+                        None
+                    }
                 })
                 .build(),
             TemplateItemId::CodegenBackend => MetadataBuilder::default()

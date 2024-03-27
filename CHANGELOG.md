@@ -1,3 +1,8 @@
+# Dev
+
+- Add a warning that binaries compiled using `-Ctarget-cpu=native` might not be
+  portable (https://github.com/Kobzol/cargo-wizard/issues/17).
+
 # 0.2.2 (11. 3. 2024)
 
 - Detect if a linker is installed and don't display warning if it is (https://github.com/Kobzol/cargo-wizard/issues/5).
