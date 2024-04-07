@@ -68,7 +68,7 @@ set of predefined templates:
 
 You can also modify these templates in the interactive mode to build your own custom template.
 
-## Caveats
+# Caveats
 
 - The configuration applied by this tool is quite opinionated and might not fit all use-cases
   perfectly. `cargo-wizard` mostly serves to improve *discoverability* of possible Cargo profile and config options, to
