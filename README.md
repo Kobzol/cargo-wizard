@@ -14,7 +14,7 @@ to configure it for maximum performance, fast compile times or minimal binary si
 
 ![Demo of cargo-wizard](img/wizard-demo.gif)
 
-# Motivation
+## Motivation
 I often see Rust users asking online about how can they best configure Cargo get e.g. the fastest compilation times,
 best
 runtime performance or minimal binary size. While this information can be found in
@@ -24,13 +24,13 @@ to hunt for it everytime we want to configure a new Cargo project.
 
 This tool tries to automate that process to make it easier.
 
-# Installation
+## Installation
 
 ```bash
 $ cargo install cargo-wizard
 ```
 
-# Usage
+## Usage
 
 - Interactive mode (CLI dialog that guides you through the process):
     ```bash
@@ -49,7 +49,7 @@ nightly Cargo (e.g. `cargo +nightly wizard`) or by using the `--nightly` flag.
 Note that you should be executing `cargo wizard` inside a directory that is a part of a Cargo workspace. It will then
 apply the configuration options to that workspace.
 
-# Features
+## Features
 `cargo-wizard` can create or modify Cargo profiles in your `Cargo.toml` manifest and RUSTFLAGS in
 the [`.cargo/config.toml`](https://doc.rust-lang.org/cargo/reference/config.html#configuration-format) file, based on a
 set of predefined templates:
@@ -68,7 +68,7 @@ set of predefined templates:
 
 You can also modify these templates in the interactive mode to build your own custom template.
 
-## Caveats
+### Caveats
 
 - The configuration applied by this tool is quite opinionated and might not fit all use-cases
   perfectly. `cargo-wizard` mostly serves to improve *discoverability* of possible Cargo profile and config options, to
@@ -79,7 +79,7 @@ You can also modify these templates in the interactive mode to build your own cu
 - Cargo config (`config.toml`) changes are applied to the global `build.hostflags` setting, because per-profile
   RUSTFLAGS are still [unstable](https://github.com/rust-lang/cargo/issues/10271).
 
-# Inspiration
+## Inspiration
 
 - [Min-sized Rust](https://github.com/johnthagen/min-sized-rust)
 - [The Rust Performance Book](https://nnethercote.github.io/perf-book/build-configuration.html)
@@ -88,7 +88,7 @@ You can also modify these templates in the interactive mode to build your own cu
 > GUI [wizards](https://documentation.softwareag.com/natural/nat913win/edis/edis_win_dia_wiz.htm) that guide you through
 > some process using a series of dialogs.
 
-# Contributing
+## Contributing
 Contributions are welcome :)
 
 Possible future features:
@@ -97,12 +97,12 @@ Possible future features:
   the [memory allocator](https://nnethercote.github.io/perf-book/build-configuration.html#alternative-allocators).
 - [ ] Load/store templates on disk to make them easier to share
 
-# Acknowledgements
+## Acknowledgements
 
 - [`toml_edit`](https://docs.rs/toml_edit/latest/toml_edit/): awesome crate that can modify TOML files while keeping
   their original formatting.
 - [`inquire`](https://github.com/mikaelmello/inquire): pretty slick crate for building interactive TUI dialogs and
   prompts.
 
-# License
+## License
 [MIT](LICENSE)
