@@ -1,8 +1,4 @@
-# cargo-wizard [![Build Status]][actions] [![Latest Version]][crates.io]
-
-[Build Status]: https://github.com/kobzol/cargo-wizard/actions/workflows/check.yml/badge.svg
-
-[actions]: https://github.com/kobzol/cargo-wizard/actions?query=branch%3Amain
+# cargo-wizard [![Latest Version]][crates.io]
 
 [Latest Version]: https://img.shields.io/crates/v/cargo-wizard.svg
 

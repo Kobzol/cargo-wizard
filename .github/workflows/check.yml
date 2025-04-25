@@ -2,9 +2,6 @@
 name: Check
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
 
 jobs:
@@ -23,7 +20,7 @@ jobs:
           - rust-version: stable
             os: windows-latest
           - rust-version: stable
-            os: macos-12
+            os: macos-13
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -33,7 +30,7 @@ jobs:
           toolchain: ${{ matrix.rust-version }}
           components: clippy, rustfmt
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Build
         run: cargo build --workspace --all-targets
