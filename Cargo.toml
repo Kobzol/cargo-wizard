@@ -26,23 +26,23 @@ include = [
 [dependencies]
 anyhow = "1.0.80"
 atty = "0.2.14"
-cargo_metadata = "0.18.1"
+cargo_metadata = "0.19"
 clap = { version = "4.5.1", features = ["derive"] }
 console = { version = "0.15.8", features = ["windows-console-colors"] }
 indexmap = "2.2.5"
 inquire = "0.7.0"
 rustc_version = "0.4.0"
 similar = { version = "2.4.0", features = ["inline"] }
-thiserror = "1.0.57"
+thiserror = "2"
 toml_edit = "0.22.6"
-which = "6.0.0"
+which = "7.0.0"
 
 [dev-dependencies]
 tempfile = "3.10.1"
 insta = "1.35.1"
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
-rexpect = "0.5.0"
+rexpect = "0.6.0"
 
 [profile.dev]
 debug = 0
