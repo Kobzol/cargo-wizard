@@ -1,3 +1,5 @@
+use rustc_version::Version;
+
 use crate::template::{dev_profile, release_profile, TemplateItemId};
 use crate::toml::TomlValue;
 use crate::utils::get_core_count;
@@ -29,8 +31,18 @@ pub fn fast_compile_template(options: &WizardOptions) -> Template {
     let mut builder = dev_profile().item(TemplateItemId::DebugInfo, TomlValue::int(0));
 
     #[cfg(unix)]
-    {
-        builder = builder.item(TemplateItemId::Linker, TomlValue::string("lld"));
+    match rustc_version::version_meta() {
+        Ok(meta) => {
+            if (meta.semver < Version::new(1, 90, 0) || &meta.host != "x86_64-unknown-linux-gnu")
+                && &meta.host != "aarch64-apple-darwin"
+            {
+                builder = builder.item(TemplateItemId::Linker, TomlValue::string("lld"));
+            }
+        }
+        Err(error) => {
+            builder = builder.item(TemplateItemId::Linker, TomlValue::string("lld"));
+            eprintln!("Cannot get compiler version. ({error:?})");
+        }
     }
 
     if options.nightly_items_enabled() {
