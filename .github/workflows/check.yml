@@ -17,10 +17,13 @@ jobs:
             os: ubuntu-latest
           - rust-version: nightly
             os: ubuntu-latest
+          # To test Linux version that does not default to the LLD linker
+          - rust-version: 1.89.0
+            os: ubuntu-latest
           - rust-version: stable
             os: windows-latest
           - rust-version: stable
-            os: macos-13
+            os: macos-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
