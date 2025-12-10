@@ -10,12 +10,12 @@ use inquire::{Autocomplete, CustomUserError, Select, Text};
 use cargo_wizard::{Template, TemplateItemId, TomlValue};
 
 use crate::cli::CliConfig;
+use crate::dialog::PromptResult;
 use crate::dialog::known_options::{
     CustomPossibleValue, KnownCargoOptions, PossibleValue, SelectedPossibleValue,
     TemplateItemMedata, TomlValueKind,
 };
 use crate::dialog::utils::{colorize_render_config, create_render_config};
-use crate::dialog::PromptResult;
 
 /// Customize the properties of a template, by choosing or modifying selected items.
 pub fn prompt_customize_template(

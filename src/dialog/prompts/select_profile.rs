@@ -7,8 +7,8 @@ use inquire::{Select, Text};
 use cargo_wizard::Profile;
 
 use crate::cli::CliConfig;
-use crate::dialog::utils::{colorize_render_config, create_render_config};
 use crate::dialog::PromptResult;
+use crate::dialog::utils::{colorize_render_config, create_render_config};
 
 pub fn prompt_select_profile(
     cli_config: &CliConfig,

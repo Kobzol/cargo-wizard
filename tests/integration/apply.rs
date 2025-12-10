@@ -1,4 +1,4 @@
-use crate::utils::{init_cargo_project, CargoProject, OutputExt};
+use crate::utils::{CargoProject, OutputExt, init_cargo_project};
 
 #[test]
 fn apply_explicit_manifest_path() -> anyhow::Result<()> {
