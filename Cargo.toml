@@ -1,6 +1,6 @@
 [package]
 name = "cargo-wizard"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2024"
 
 description = "Cargo subcommand for applying Cargo profile templates."
