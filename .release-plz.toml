@@ -1,0 +1,5 @@
+[workspace]
+release_always = false
+pr_branch_prefix = "release-"
+pr_labels = ["release"]
+semver_check = false
