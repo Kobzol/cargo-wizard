@@ -16,10 +16,12 @@ fn dialog_fast_compile_to_dev() -> anyhow::Result<()> {
     debug = 0
     "###);
 
-    insta::assert_snapshot!(project.read_config(), @r###"
-    [build]
-    rustflags = ["-Clink-arg=-fuse-ld=lld"]
-    "###);
+    if rustversion::cfg!(before(1.90.0)) {
+        insta::assert_snapshot!(project.read_config(), @r###"
+        [build]
+        rustflags = ["-Clink-arg=-fuse-ld=lld"]
+        "###);
+    }
 
     Ok(())
 }
@@ -417,10 +419,17 @@ fn dialog_fast_compile_nightly() -> anyhow::Result<()> {
     codegen-backend = "cranelift"
     "###);
 
-    insta::assert_snapshot!(project.read_config(), @r###"
-    [build]
-    rustflags = ["-Clink-arg=-fuse-ld=lld", "-Zthreads=4"]
-    "###);
+    if rustversion::cfg!(before(1.90.0)) {
+        insta::assert_snapshot!(project.read_config(), @r###"
+        [build]
+        rustflags = ["-Clink-arg=-fuse-ld=lld", "-Zthreads=4"]
+        "###);
+    } else {
+        insta::assert_snapshot!(project.read_config(), @r###"
+        [build]
+        rustflags = ["-Zthreads=4"]
+        "###);
+    }
 
     Ok(())
 }
