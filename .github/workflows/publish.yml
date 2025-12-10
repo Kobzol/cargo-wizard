@@ -1,0 +1,70 @@
+name: Publish new release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Release test
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'kobzol' }}
+    steps:
+      - &checkout
+        name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - &install-rust
+        name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-expand
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --locked --version 1.0.118 cargo-expand
+      - run: cargo test
+  # Release unpublished packages.
+  release:
+    name: Release-plz release
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'kobzol' }}
+    needs:
+      - test
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - *checkout
+      - *install-rust
+      - name: Run release-plz
+        # 0.5.118
+        uses: release-plz/action@01df7609d1a7310c0776a102df00daf509d56e33
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Create a PR with the new versions and changelog, preparing the next release.
+  create-release-pr:
+    name: Release-plz PR
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'kobzol' }}
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: release-plz-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - *checkout
+      - *install-rust
+      - name: Run release-plz
+        # 0.5.118
+        uses: release-plz/action@01df7609d1a7310c0776a102df00daf509d56e33
+        with:
+          command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
