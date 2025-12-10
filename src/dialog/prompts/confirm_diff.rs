@@ -1,16 +1,17 @@
 use std::fmt::{Display, Formatter};
 
-use console::{style, Style};
-use inquire::ui::{Color, RenderConfig};
+use console::{Style, style};
 use inquire::Confirm;
+use inquire::ui::{Color, RenderConfig};
 use similar::ChangeTag;
 
 use cargo_wizard::{CargoWorkspace, ModificationResult, ModifiedWorkspace, Profile, Template};
 
 use crate::cli::CliConfig;
-use crate::dialog::utils::{clear_line, colorize_render_config, create_render_config, file_style};
 use crate::dialog::PromptResult;
+use crate::dialog::utils::{clear_line, colorize_render_config, create_render_config, file_style};
 
+#[allow(clippy::large_enum_variant)]
 pub enum ConfirmDiffPromptResponse {
     Accepted(ModifiedWorkspace),
     Denied,

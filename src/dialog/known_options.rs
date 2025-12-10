@@ -6,7 +6,7 @@ use std::process::{Command, Stdio};
 use anyhow::Context;
 use console::Style;
 
-use cargo_wizard::{get_core_count, TemplateItemId, TomlValue};
+use cargo_wizard::{TemplateItemId, TomlValue, get_core_count};
 
 use crate::dialog::utils;
 use crate::dialog::utils::find_program_path;
@@ -28,7 +28,7 @@ impl TomlValueKind {
 }
 
 pub enum SelectedPossibleValue {
-    Constant { index: usize, value: TomlValue },
+    Constant { index: usize },
     Custom { value: TomlValue },
     None,
 }
@@ -45,11 +45,11 @@ pub struct TemplateItemMedata {
 impl TemplateItemMedata {
     pub fn get_selected_value(&self, value: TomlValue) -> SelectedPossibleValue {
         if let Some(index) = self.values.iter().position(|v| v.value == value) {
-            return SelectedPossibleValue::Constant { value, index };
-        } else if let Some(custom) = &self.custom_value {
-            if custom.kind().matches_value(&value) {
-                return SelectedPossibleValue::Custom { value };
-            }
+            return SelectedPossibleValue::Constant { index };
+        } else if let Some(custom) = &self.custom_value
+            && custom.kind().matches_value(&value)
+        {
+            return SelectedPossibleValue::Custom { value };
         }
         SelectedPossibleValue::None
     }
@@ -181,7 +181,10 @@ fn get_target_cpu_list() -> anyhow::Result<Vec<String>> {
     let stdout = String::from_utf8(output.stdout)?;
     let stderr = String::from_utf8(output.stderr)?;
     if !output.status.success() {
-        return Err(anyhow::anyhow!("Cannot run `rustc` to find `target-cpus` list (exit code {})\nStdout:\n{stdout}\n\nStderr:\n{stderr}", output.status));
+        return Err(anyhow::anyhow!(
+            "Cannot run `rustc` to find `target-cpus` list (exit code {})\nStdout:\n{stdout}\n\nStderr:\n{stderr}",
+            output.status
+        ));
     }
     Ok(parse_target_cpu_list(&stdout))
 }
@@ -372,7 +375,7 @@ impl PossibleValue {
 /// Test that the predefined templates can be created without panicking.
 #[cfg(test)]
 mod tests {
-    use crate::dialog::known_options::{parse_target_cpu_list, KnownCargoOptions};
+    use crate::dialog::known_options::{KnownCargoOptions, parse_target_cpu_list};
 
     #[test]
     fn get_profile_id_possible_values() {

@@ -3,13 +3,13 @@ use std::path::{Path, PathBuf};
 
 use crate::{Template, TemplateItemId, TomlValue};
 use anyhow::Context;
-use toml_edit::{table, value, Array, Document, Formatted, Value};
+use toml_edit::{Array, DocumentMut, Formatted, Value, table, value};
 
 /// Config stored in `.cargo/config.toml` file.
 #[derive(Debug, Clone)]
 pub struct CargoConfig {
     path: PathBuf,
-    document: Document,
+    document: DocumentMut,
 }
 
 impl CargoConfig {
@@ -23,7 +23,7 @@ impl CargoConfig {
     pub fn from_path(path: &Path) -> anyhow::Result<Self> {
         let config = std::fs::read_to_string(path).context("Cannot read config.toml file")?;
         let document = config
-            .parse::<Document>()
+            .parse::<DocumentMut>()
             .context("Cannot parse config.toml file")?;
 
         Ok(Self {
@@ -78,9 +78,7 @@ impl CargoConfig {
         let flag_map: HashMap<_, _> = rustflags
             .iter()
             .filter_map(|rustflag| {
-                let Some((key, value)) = rustflag.split_once('=') else {
-                    return None;
-                };
+                let (key, value) = rustflag.split_once('=')?;
                 Some((key.to_string(), value.to_string()))
             })
             .collect();
@@ -90,16 +88,14 @@ impl CargoConfig {
             // Find flags with the same key (e.g. -Ckey=val) and replace their values, to avoid
             // duplicating the keys.
             for item in array.iter_mut() {
-                if let Some(val) = item.as_str() {
-                    if let Some((key, _)) = val.split_once('=') {
-                        if let Some(new_value) = flag_map.get(key) {
-                            let decor = item.decor().clone();
-                            let mut new_value =
-                                Value::String(Formatted::new(format!("{key}={new_value}")));
-                            *new_value.decor_mut() = decor;
-                            *item = new_value;
-                        }
-                    }
+                if let Some(val) = item.as_str()
+                    && let Some((key, _)) = val.split_once('=')
+                    && let Some(new_value) = flag_map.get(key)
+                {
+                    let decor = item.decor().clone();
+                    let mut new_value = Value::String(Formatted::new(format!("{key}={new_value}")));
+                    *new_value.decor_mut() = decor;
+                    *item = new_value;
                 }
             }
 
@@ -152,7 +148,7 @@ pub fn config_path_from_manifest_path(manifest_path: &Path) -> PathBuf {
 mod tests {
     use std::str::FromStr;
 
-    use toml_edit::Document;
+    use toml_edit::DocumentMut;
 
     use crate::template::TemplateBuilder;
     use crate::workspace::manifest::BuiltinProfile;
@@ -284,7 +280,7 @@ rustflags = [
     fn create_config(text: &str) -> CargoConfig {
         CargoConfig {
             path: Default::default(),
-            document: Document::from_str(text).unwrap(),
+            document: DocumentMut::from_str(text).unwrap(),
         }
     }
 
