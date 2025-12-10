@@ -20,7 +20,7 @@ jobs:
           - rust-version: stable
             os: windows-latest
           - rust-version: stable
-            os: macos-13
+            os: macos-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
