@@ -1,15 +1,15 @@
 use anyhow::Context;
 
 use cargo_wizard::{
-    parse_workspace, resolve_manifest_path, BuiltinProfile, PredefinedTemplateKind, Profile,
-    Template, WizardOptions,
+    BuiltinProfile, PredefinedTemplateKind, Profile, Template, WizardOptions, parse_workspace,
+    resolve_manifest_path,
 };
 pub use error::{DialogError, PromptResult};
 pub use utils::profile_from_str;
 
 use crate::cli::CliConfig;
 pub use crate::dialog::known_options::KnownCargoOptions;
-use crate::dialog::prompts::confirm_diff::{prompt_confirm_diff, ConfirmDiffPromptResponse};
+use crate::dialog::prompts::confirm_diff::{ConfirmDiffPromptResponse, prompt_confirm_diff};
 use crate::dialog::prompts::customize_template::prompt_customize_template;
 use crate::dialog::prompts::select_profile::prompt_select_profile;
 use crate::dialog::prompts::select_template::prompt_select_template;
@@ -106,8 +106,10 @@ pub fn on_template_applied(
     match template_kind {
         PredefinedTemplateKind::FastCompile => {
             if !requires_nightly {
-                println!("Tip: run `cargo-wizard` with the `{}` flag to discover nightly-only configuration options.",
-                utils::command_style().apply_to("--nightly"));
+                println!(
+                    "Tip: run `cargo-wizard` with the `{}` flag to discover nightly-only configuration options.",
+                    utils::command_style().apply_to("--nightly")
+                );
             }
         }
         PredefinedTemplateKind::FastRuntime => {

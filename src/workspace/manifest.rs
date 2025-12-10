@@ -1,9 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
-use toml_edit::{table, value, Array, Document, Item, Value};
+use toml_edit::{Array, DocumentMut, Item, Value, table, value};
 
-use crate::template::{dev_profile, release_profile, TemplateItemId};
+use crate::template::{TemplateItemId, dev_profile, release_profile};
 use crate::{Template, TomlValue};
 
 /// Tries to resolve the workspace root manifest (Cargo.toml) path from the current directory.
@@ -65,7 +65,7 @@ impl Profile {
 #[derive(Clone)]
 pub struct CargoManifest {
     path: PathBuf,
-    document: Document,
+    document: DocumentMut,
 }
 
 impl CargoManifest {
@@ -73,7 +73,7 @@ impl CargoManifest {
         let manifest = std::fs::read_to_string(path)
             .with_context(|| format!("Cannot read Cargo.toml manifest from {}", path.display()))?;
         let document = manifest
-            .parse::<Document>()
+            .parse::<DocumentMut>()
             .with_context(|| format!("Cannot parse Cargo.toml manifest from {}", path.display()))?;
         Ok(Self {
             document,
@@ -132,9 +132,7 @@ impl CargoManifest {
         let mut values: Vec<_> = template
             .iter_items()
             .filter_map(|(id, value)| {
-                let Some(name) = id_to_item_name(id) else {
-                    return None;
-                };
+                let name = id_to_item_name(id)?;
 
                 // Check if there is any existing value in the TOML profile table
                 let existing_value = profile_table.get(name).and_then(|item| {
@@ -142,10 +140,9 @@ impl CargoManifest {
                         Some(TomlValue::Bool(value))
                     } else if let Some(value) = item.as_integer() {
                         Some(TomlValue::Int(value))
-                    } else if let Some(value) = item.as_str() {
-                        Some(TomlValue::String(value.to_string()))
                     } else {
-                        None
+                        item.as_str()
+                            .map(|value| TomlValue::String(value.to_string()))
                     }
                 });
                 // Check if we modify a built-in profile, and if we have a default vaule for this
@@ -155,10 +152,10 @@ impl CargoManifest {
                 // If we have the same value as the default, and the existing value also matches the
                 // default, skip this item.
                 let base_item = existing_value.or(default_item);
-                if let Some(base_value) = base_item {
-                    if &base_value == value {
-                        return None;
-                    }
+                if let Some(base_value) = base_item
+                    && &base_value == value
+                {
+                    return None;
                 };
 
                 Some(TableItem {
@@ -187,20 +184,17 @@ impl CargoManifest {
         }
 
         // Add necessary Cargo features
-        if template.get_item(TemplateItemId::CodegenBackend).is_some() {
-            if let Some(features) = self
+        if template.get_item(TemplateItemId::CodegenBackend).is_some()
+            && let Some(features) = self
                 .document
                 .entry("cargo-features")
                 .or_insert(Item::Value(Value::Array(Array::new())))
                 .as_array_mut()
-            {
-                if !features
-                    .iter()
-                    .any(|v| v.as_str() == Some("codegen-backend"))
-                {
-                    features.push("codegen-backend");
-                }
-            }
+            && !features
+                .iter()
+                .any(|v| v.as_str() == Some("codegen-backend"))
+        {
+            features.push("codegen-backend");
         }
 
         Ok(self)

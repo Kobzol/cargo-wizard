@@ -1,6 +1,6 @@
 use rustc_version::Version;
 
-use crate::template::{dev_profile, release_profile, TemplateItemId};
+use crate::template::{TemplateItemId, dev_profile, release_profile};
 use crate::toml::TomlValue;
 use crate::utils::get_core_count;
 use crate::{Template, WizardOptions};
@@ -87,7 +87,7 @@ pub fn min_size_template() -> Template {
 /// Test that the predefined templates can be created without panicking.
 #[cfg(test)]
 mod tests {
-    use crate::{fast_compile_template, fast_runtime_template, min_size_template, WizardOptions};
+    use crate::{WizardOptions, fast_compile_template, fast_runtime_template, min_size_template};
 
     #[test]
     fn create_fast_compile_template() {

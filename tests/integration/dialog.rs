@@ -1,5 +1,5 @@
 use crate::utils::terminal::Terminal;
-use crate::utils::{init_cargo_project, CargoProject};
+use crate::utils::{CargoProject, init_cargo_project};
 
 #[test]
 fn dialog_fast_compile_to_dev() -> anyhow::Result<()> {

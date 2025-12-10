@@ -1,10 +1,10 @@
 use crate::cli::CliConfig;
-use crate::dialog::utils::{colorize_render_config, create_render_config};
 use crate::dialog::PromptResult;
+use crate::dialog::utils::{colorize_render_config, create_render_config};
 use cargo_wizard::PredefinedTemplateKind;
 use clap::ValueEnum;
-use inquire::ui::{Color, RenderConfig};
 use inquire::Select;
+use inquire::ui::{Color, RenderConfig};
 use std::fmt::{Display, Formatter};
 
 pub fn prompt_select_template(cli_config: &CliConfig) -> PromptResult<PredefinedTemplateKind> {

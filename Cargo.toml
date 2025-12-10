@@ -1,7 +1,7 @@
 [package]
 name = "cargo-wizard"
 version = "0.2.2"
-edition = "2021"
+edition = "2024"
 
 description = "Cargo subcommand for applying Cargo profile templates."
 repository = "https://github.com/kobzol/cargo-wizard"
@@ -24,26 +24,25 @@ include = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.80"
-atty = "0.2.14"
-cargo_metadata = "0.19"
-clap = { version = "4.5.1", features = ["derive"] }
-console = { version = "0.15.8", features = ["windows-console-colors"] }
-indexmap = "2.2.5"
-inquire = "0.7.0"
-rustc_version = "0.4.0"
-similar = { version = "2.4.0", features = ["inline"] }
+anyhow = "1"
+cargo_metadata = "0.23"
+clap = { version = "4", features = ["derive"] }
+console = { version = "0.16", features = ["windows-console-colors"] }
+indexmap = "2"
+inquire = "0.9"
+rustc_version = "0.4"
+similar = { version = "2.4", features = ["inline"] }
 thiserror = "2"
-toml_edit = "0.22.6"
-which = "7.0.0"
+toml_edit = "0.23"
+which = "8"
 
 [dev-dependencies]
-tempfile = "3.10.1"
-insta = "1.35.1"
-rustversion = "1.0.22"
+tempfile = "3"
+insta = "1"
+rustversion = "1"
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
-rexpect = "0.6.0"
+rexpect = "0.6"
 
 [profile.dev]
 debug = 0

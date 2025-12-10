@@ -1,3 +1,4 @@
+use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -6,12 +7,12 @@ use clap::Parser;
 use rustc_version::Channel;
 
 use cargo_wizard::{
-    parse_workspace, resolve_manifest_path, PredefinedTemplateKind, Profile, WizardOptions,
+    PredefinedTemplateKind, Profile, WizardOptions, parse_workspace, resolve_manifest_path,
 };
 
 use crate::cli::CliConfig;
 use crate::dialog::{
-    on_template_applied, profile_from_str, run_root_dialog, DialogError, KnownCargoOptions,
+    DialogError, KnownCargoOptions, on_template_applied, profile_from_str, run_root_dialog,
 };
 
 mod cli;
@@ -112,17 +113,17 @@ enum SubCommand {
 fn options_from_args(args: &InnerArgs) -> WizardOptions {
     let mut options = WizardOptions::default();
     let is_nightly = match args.nightly {
-        NightlyOptions::Auto => {
-            match rustc_version::version_meta() {
-                Ok(metadata) => {
-                    matches!(metadata.channel, Channel::Nightly)
-                }
-                Err(error) => {
-                    eprintln!("Cannot get compiler channel, defaulting to *no* nightly options ({error:?}");
-                    false
-                }
+        NightlyOptions::Auto => match rustc_version::version_meta() {
+            Ok(metadata) => {
+                matches!(metadata.channel, Channel::Nightly)
             }
-        }
+            Err(error) => {
+                eprintln!(
+                    "Cannot get compiler channel, defaulting to *no* nightly options ({error:?}"
+                );
+                false
+            }
+        },
         NightlyOptions::On => true,
         NightlyOptions::Off => false,
     };
@@ -181,7 +182,7 @@ fn main() -> anyhow::Result<()> {
 fn setup_cli(policy: ColorPolicy) -> CliConfig {
     let mut use_colors = match policy {
         ColorPolicy::Always => true,
-        ColorPolicy::Auto => atty::is(atty::Stream::Stdout),
+        ColorPolicy::Auto => std::io::stdout().is_terminal(),
         ColorPolicy::Never => false,
     };
 

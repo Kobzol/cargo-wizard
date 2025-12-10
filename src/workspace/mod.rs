@@ -5,7 +5,7 @@ use anyhow::Context;
 use crate::Template;
 use manifest::CargoManifest;
 
-use crate::workspace::config::{config_path_from_manifest_path, CargoConfig};
+use crate::workspace::config::{CargoConfig, config_path_from_manifest_path};
 use crate::workspace::manifest::Profile;
 
 pub mod config;
