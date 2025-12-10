@@ -25,7 +25,6 @@ include = [
 
 [dependencies]
 anyhow = "1.0.80"
-atty = "0.2.14"
 cargo_metadata = "0.19"
 clap = { version = "4.5.1", features = ["derive"] }
 console = { version = "0.15.8", features = ["windows-console-colors"] }
