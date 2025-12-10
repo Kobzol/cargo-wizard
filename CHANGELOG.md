@@ -2,6 +2,7 @@
 
 - Add a warning that binaries compiled using `-Ctarget-cpu=native` might not be
   portable (https://github.com/Kobzol/cargo-wizard/issues/17).
+- Do not suggest LLD on macOS or x64 GNU Linux on Rust >= 1.90.0 (https://github.com/Kobzol/cargo-wizard/pull/29).
 
 # 0.2.2 (11. 3. 2024)
 
