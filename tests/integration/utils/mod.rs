@@ -134,8 +134,11 @@ impl Cmd {
             command.stderr(Stdio::piped());
         }
 
-        let path = std::env::var("PATH").unwrap_or_default();
-        let path = format!("{}:{}", debug_target_dir().display(), path);
+        let current_path = std::env::var_os("PATH").unwrap_or_default();
+        let path = std::env::join_paths(
+            std::iter::once(debug_target_dir()).chain(std::env::split_paths(&current_path)),
+        )
+        .expect("Could not construct PATH for integration test command");
 
         command.env("PATH", path);
         command
