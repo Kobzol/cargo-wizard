@@ -26,6 +26,20 @@ impl PredefinedTemplateKind {
     }
 }
 
+#[cfg(unix)]
+fn is_macos_host(host: &str) -> bool {
+    host.ends_with("-apple-darwin")
+}
+
+#[cfg(unix)]
+fn should_suggest_lld(version: &Version, host: &str) -> bool {
+    if is_macos_host(host) {
+        return false;
+    }
+
+    version < &Version::new(1, 90, 0) || host != "x86_64-unknown-linux-gnu"
+}
+
 /// Template that focuses on quick compile time.
 pub fn fast_compile_template(options: &WizardOptions) -> Template {
     let mut builder = dev_profile().item(TemplateItemId::DebugInfo, TomlValue::int(0));
@@ -33,15 +47,15 @@ pub fn fast_compile_template(options: &WizardOptions) -> Template {
     #[cfg(unix)]
     match rustc_version::version_meta() {
         Ok(meta) => {
-            if (meta.semver < Version::new(1, 90, 0) || &meta.host != "x86_64-unknown-linux-gnu")
-                && &meta.host != "aarch64-apple-darwin"
-            {
+            if should_suggest_lld(&meta.semver, &meta.host) {
                 builder = builder.item(TemplateItemId::Linker, TomlValue::string("lld"));
             }
         }
         Err(error) => {
-            builder = builder.item(TemplateItemId::Linker, TomlValue::string("lld"));
-            eprintln!("Cannot get compiler version. ({error:?})");
+            if !cfg!(target_os = "macos") {
+                builder = builder.item(TemplateItemId::Linker, TomlValue::string("lld"));
+            }
+            eprintln!("Cannot get compiler version metadata. ({error:?})");
         }
     }
 
@@ -89,6 +103,11 @@ pub fn min_size_template() -> Template {
 mod tests {
     use crate::{WizardOptions, fast_compile_template, fast_runtime_template, min_size_template};
 
+    #[cfg(unix)]
+    use super::should_suggest_lld;
+    #[cfg(unix)]
+    use rustc_version::Version;
+
     #[test]
     fn create_fast_compile_template() {
         fast_compile_template(&WizardOptions::default());
@@ -102,5 +121,30 @@ mod tests {
     #[test]
     fn create_min_size_template() {
         min_size_template();
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn fast_compile_linker_matrix_matches_supported_hosts() {
+        assert!(should_suggest_lld(
+            &Version::new(1, 89, 0),
+            "x86_64-unknown-linux-gnu"
+        ));
+        assert!(!should_suggest_lld(
+            &Version::new(1, 90, 0),
+            "x86_64-unknown-linux-gnu"
+        ));
+        assert!(should_suggest_lld(
+            &Version::new(1, 90, 0),
+            "aarch64-unknown-linux-gnu"
+        ));
+        assert!(!should_suggest_lld(
+            &Version::new(1, 89, 0),
+            "x86_64-apple-darwin"
+        ));
+        assert!(!should_suggest_lld(
+            &Version::new(1, 90, 0),
+            "aarch64-apple-darwin"
+        ));
     }
 }
