@@ -99,7 +99,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-wizard"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "cargo_metadata",
