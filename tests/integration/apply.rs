@@ -259,6 +259,59 @@ fn apply_fast_runtime_template() -> anyhow::Result<()> {
 }
 
 #[test]
+fn apply_fast_runtime_template_to_dev_writes_release_defaults() -> anyhow::Result<()> {
+    let project = init_cargo_project()?;
+
+    apply(&project, "dev", "fast-runtime")?;
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.dev]
+    opt-level = 3
+    debug = false
+    lto = true
+    codegen-units = 1
+    incremental = false
+    panic = "abort"
+    "###);
+
+    insta::assert_snapshot!(project.read_config(), @r###"
+    [build]
+    rustflags = ["-Ctarget-cpu=native"]
+    "###);
+
+    Ok(())
+}
+
+#[test]
+fn apply_fast_runtime_template_to_release_skips_release_defaults() -> anyhow::Result<()> {
+    let project = init_cargo_project()?;
+
+    apply(&project, "release", "fast-runtime")?;
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.release]
+    lto = true
+    codegen-units = 1
+    panic = "abort"
+    "###);
+
+    insta::assert_snapshot!(project.read_config(), @r###"
+    [build]
+    rustflags = ["-Ctarget-cpu=native"]
+    "###);
+
+    Ok(())
+}
+
+#[test]
 fn apply_min_size_template() -> anyhow::Result<()> {
     let project = init_cargo_project()?;
 

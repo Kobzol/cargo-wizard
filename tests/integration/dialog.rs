@@ -450,8 +450,11 @@ fn dialog_unset_item() -> anyhow::Result<()> {
     edition = "2021"
 
     [profile.dev]
+    opt-level = 3
+    debug = false
     lto = true
     codegen-units = 1
+    incremental = false
     "###);
 
     Ok(())

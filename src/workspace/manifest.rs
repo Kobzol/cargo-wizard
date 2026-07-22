@@ -117,17 +117,13 @@ impl CargoManifest {
                 )
             })?;
 
-        // If we're applying the template to a built-in profile (dev or release), we skip the items
-        // that still have the default value.
-        // However, we don't do that for custom profiles based on dev/release, since dev/release
-        // might not actually contain the default values in that case.
-        let base_template = if profile.is_builtin() {
-            Some(match template.inherits() {
-                BuiltinProfile::Dev => dev_profile().build(),
-                BuiltinProfile::Release => release_profile().build(),
-            })
-        } else {
-            None
+        // For a built-in destination, omit settings that already match that profile's Cargo
+        // defaults. Keep custom profiles explicit because their inherited profile may be
+        // overridden elsewhere in this manifest.
+        let base_template = match profile {
+            Profile::Builtin(BuiltinProfile::Dev) => Some(dev_profile().build()),
+            Profile::Builtin(BuiltinProfile::Release) => Some(release_profile().build()),
+            Profile::Custom(_) => None,
         };
         let mut values: Vec<_> = template
             .iter_items()
@@ -145,7 +141,7 @@ impl CargoManifest {
                             .map(|value| TomlValue::String(value.to_string()))
                     }
                 });
-                // Check if we modify a built-in profile, and if we have a default vaule for this
+                // Check if we modify a built-in profile, and if we have a default value for this
                 // item in the profile.
                 let default_item = base_template.as_ref().and_then(|t| t.get_item(id).cloned());
 
