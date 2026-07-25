@@ -400,6 +400,7 @@ fn dialog_compiler_wrapper() -> anyhow::Result<()> {
     let project = init_cargo_project()?.disable_check_on_drop();
 
     DialogBuilder::default()
+        .template("MinSize")
         .customize_item("Compiler cache", "sccache")
         .run(&project)?;
 
