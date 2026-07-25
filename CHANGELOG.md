@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4](https://github.com/Kobzol/cargo-wizard/compare/v0.2.3...v0.2.4) - 2026-07-25
+
+### Other
+
+- Update src/dialog/known_options.rs
+- Add sccache compiler wrapper option
+- Fix built-in profile default handling
+
 ## [0.2.3](https://github.com/Kobzol/cargo-wizard/compare/v0.2.2...v0.2.3) - 2026-04-13
 
 ### Other
