@@ -396,6 +396,23 @@ fn dialog_codegen_backend_nightly_mark() -> anyhow::Result<()> {
 }
 
 #[test]
+fn dialog_compiler_wrapper() -> anyhow::Result<()> {
+    let project = init_cargo_project()?.disable_check_on_drop();
+
+    DialogBuilder::default()
+        .template("MinSize")
+        .customize_item("Compiler cache", "sccache")
+        .run(&project)?;
+
+    insta::assert_snapshot!(project.read_config(), @r###"
+    [build]
+    rustc-wrapper = "sccache"
+    "###);
+
+    Ok(())
+}
+
+#[test]
 fn dialog_fast_compile_nightly() -> anyhow::Result<()> {
     let project = init_cargo_project()?.disable_check_on_drop();
 
