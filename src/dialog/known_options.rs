@@ -226,6 +226,7 @@ impl KnownCargoOptions {
             TemplateItemId::Strip,
             TemplateItemId::Incremental,
             TemplateItemId::Linker,
+            TemplateItemId::CompilerWrapper,
             TemplateItemId::CodegenBackend,
             TemplateItemId::FrontendThreads,
         ]
@@ -310,8 +311,8 @@ impl KnownCargoOptions {
                 .build(),
             TemplateItemId::Linker => {
                 MetadataBuilder::default()
-                    .string(&linker_description("lld", "LLD"), "lld")
-                    .string(&linker_description("mold", "MOLD"), "mold")
+                    .string(&program_description("lld", "LLD"), "lld")
+                    .string(&program_description("mold", "MOLD"), "mold")
                     .requires_unix()
                     .on_applied(|value| {
                         if let TomlValue::String(linker) = value {
@@ -328,6 +329,23 @@ impl KnownCargoOptions {
                     })
                     .build()
             },
+            TemplateItemId::CompilerWrapper => MetadataBuilder::default()
+                .string(&program_description("sccache", "sccache"), "sccache")
+                .on_applied(|value| {
+                    let TomlValue::String(wrapper) = value else {
+                        return None;
+                    };
+                    if wrapper == "sccache" && find_program_path(wrapper).is_none() {
+                        Some(format!(
+                            "Warning: Do not forget to install the {} compiler wrapper, e.g. using `{}`.",
+                            utils::command_style().apply_to(wrapper),
+                            utils::command_style().apply_to("cargo install sccache")
+                        ))
+                    } else {
+                        None
+                    }
+                })
+                .build(),
             TemplateItemId::Incremental => MetadataBuilder::default()
                 .bool("Enable", true)
                 .bool("Disable", false)
@@ -341,7 +359,7 @@ impl KnownCargoOptions {
     }
 }
 
-fn linker_description(path: &str, name: &str) -> String {
+fn program_description(path: &str, name: &str) -> String {
     find_program_path(path)
         .and_then(|p| p.to_str().map(|s| s.to_string()))
         .map(|s| format!("{name} (found at {s})"))

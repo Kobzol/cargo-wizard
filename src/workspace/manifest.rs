@@ -216,7 +216,8 @@ fn id_to_item_name(id: TemplateItemId) -> Option<&'static str> {
         TemplateItemId::Incremental => Some("incremental"),
         TemplateItemId::TargetCpuInstructionSet
         | TemplateItemId::FrontendThreads
-        | TemplateItemId::Linker => None,
+        | TemplateItemId::Linker
+        | TemplateItemId::CompilerWrapper => None,
     }
 }
 

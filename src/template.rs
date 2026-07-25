@@ -99,6 +99,7 @@ pub enum TemplateItemId {
     FrontendThreads,
     TargetCpuInstructionSet,
     Linker,
+    CompilerWrapper,
 }
 
 /// Describes options for applying templates

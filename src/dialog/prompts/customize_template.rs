@@ -152,6 +152,7 @@ impl Display for ItemId {
             TemplateItemId::TargetCpuInstructionSet => "Target CPU instruction set",
             TemplateItemId::FrontendThreads => "Number of frontend threads",
             TemplateItemId::Linker => "Linker",
+            TemplateItemId::CompilerWrapper => "Compiler cache (sccache)",
             TemplateItemId::Incremental => "Incremental compilation",
             TemplateItemId::SplitDebugInfo => "Split debug info",
         };

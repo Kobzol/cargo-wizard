@@ -37,6 +37,15 @@ impl CargoConfig {
     }
 
     pub fn apply_template(mut self, template: &Template) -> anyhow::Result<Self> {
+        let compiler_wrapper = template
+            .get_item(TemplateItemId::CompilerWrapper)
+            .map(|value| match value {
+                TomlValue::String(value) => Ok(value.as_str()),
+                _ => Err(anyhow::anyhow!(
+                    "Compiler wrapper in the template must be a string"
+                )),
+            })
+            .transpose()?;
         let rustflags: Vec<String> = template
             .iter_items()
             .filter_map(|(id, value)| {
@@ -51,6 +60,7 @@ impl CargoConfig {
                     }
                     TemplateItemId::FrontendThreads => Some(format!("-Zthreads={value}")),
                     TemplateItemId::Linker => Some(format!("-Clink-arg=-fuse-ld={value}")),
+                    TemplateItemId::CompilerWrapper => None,
                     TemplateItemId::DebugInfo
                     | TemplateItemId::Strip
                     | TemplateItemId::Lto
@@ -63,7 +73,7 @@ impl CargoConfig {
                 }
             })
             .collect();
-        if rustflags.is_empty() {
+        if rustflags.is_empty() && compiler_wrapper.is_none() {
             return Ok(self);
         }
 
@@ -73,6 +83,22 @@ impl CargoConfig {
             .or_insert(table())
             .as_table_mut()
             .ok_or_else(|| anyhow::anyhow!("The build item in config.toml is not a table"))?;
+
+        if let Some(wrapper) = compiler_wrapper {
+            let wrapper_item = build.entry("rustc-wrapper").or_insert(value(wrapper));
+            if wrapper_item.as_str() != Some(wrapper) {
+                let wrapper_value = wrapper_item.as_value_mut().ok_or_else(|| {
+                    anyhow::anyhow!("build.rustc-wrapper in config.toml is not a string")
+                })?;
+                let decor = wrapper_value.decor().clone();
+                *wrapper_value = Value::String(Formatted::new(wrapper.to_string()));
+                *wrapper_value.decor_mut() = decor;
+            }
+        }
+
+        if rustflags.is_empty() {
+            return Ok(self);
+        }
         let flags = build.entry("rustflags").or_insert(value(Array::new()));
 
         let flag_map: HashMap<_, _> = rustflags
@@ -266,6 +292,47 @@ rustflags = [
             "-Ctarget-cpu=native", # Foo
             "-Cbar=baz", # Foo
         ]
+        "###);
+    }
+
+    #[test]
+    fn create_compiler_wrapper() {
+        let template = create_template(&[(TemplateItemId::CompilerWrapper, "sccache")]);
+        let config = create_empty_config().apply_template(&template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustc-wrapper = "sccache"
+        "###);
+    }
+
+    #[test]
+    fn compiler_wrapper_coexists_with_rustflags() {
+        let template = create_template(&[
+            (TemplateItemId::CompilerWrapper, "sccache"),
+            (TemplateItemId::TargetCpuInstructionSet, "native"),
+        ]);
+        let config = create_empty_config().apply_template(&template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustc-wrapper = "sccache"
+        rustflags = ["-Ctarget-cpu=native"]
+        "###);
+    }
+
+    #[test]
+    fn replace_compiler_wrapper_keep_formatting() {
+        let template = create_template(&[(TemplateItemId::CompilerWrapper, "sccache")]);
+        let config = create_config(
+            r#"
+[build]
+rustc-wrapper = "old-wrapper" # Wrapper
+"#,
+        );
+        let config = config.apply_template(&template).unwrap();
+        let config = config.apply_template(&template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustc-wrapper = "sccache" # Wrapper
         "###);
     }
 
