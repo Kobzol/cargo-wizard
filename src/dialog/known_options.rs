@@ -337,7 +337,7 @@ impl KnownCargoOptions {
                     };
                     if wrapper == "sccache" && find_program_path(wrapper).is_none() {
                         Some(format!(
-                            "Warning: Do not forget to install the {} compiler wrapper, e.g. using `{}`.",
+                            "⚠️  Do not forget to install the {} compiler wrapper, e.g. using `{}`.",
                             utils::command_style().apply_to(wrapper),
                             utils::command_style().apply_to("cargo install sccache")
                         ))
