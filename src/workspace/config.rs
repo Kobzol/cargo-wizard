@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::{Template, TemplateItemId, TomlValue};
@@ -37,43 +37,27 @@ impl CargoConfig {
     }
 
     pub fn apply_template(mut self, template: &Template) -> anyhow::Result<Self> {
-        let compiler_wrapper = template
-            .get_item(TemplateItemId::CompilerWrapper)
-            .map(|value| match value {
-                TomlValue::String(value) => Ok(value.as_str()),
-                _ => Err(anyhow::anyhow!(
-                    "Compiler wrapper in the template must be a string"
-                )),
-            })
-            .transpose()?;
-        let rustflags: Vec<String> = template
+        let build_values: anyhow::Result<Vec<_>> = template
             .iter_items()
             .filter_map(|(id, value)| {
-                let value = match value {
-                    TomlValue::String(value) => value.clone(),
-                    TomlValue::Int(value) => value.to_string(),
-                    TomlValue::Bool(value) => value.to_string(),
+                let descriptor = config_item_descriptor(id)?;
+                let ConfigItemEncoding::BuildString { key } = descriptor.encoding else {
+                    return None;
                 };
-                match id {
-                    TemplateItemId::TargetCpuInstructionSet => {
-                        Some(format!("-Ctarget-cpu={value}"))
-                    }
-                    TemplateItemId::FrontendThreads => Some(format!("-Zthreads={value}")),
-                    TemplateItemId::Linker => Some(format!("-Clink-arg=-fuse-ld={value}")),
-                    TemplateItemId::CompilerWrapper => None,
-                    TemplateItemId::DebugInfo
-                    | TemplateItemId::Strip
-                    | TemplateItemId::Lto
-                    | TemplateItemId::CodegenUnits
-                    | TemplateItemId::Panic
-                    | TemplateItemId::OptimizationLevel
-                    | TemplateItemId::CodegenBackend
-                    | TemplateItemId::Incremental
-                    | TemplateItemId::SplitDebugInfo => None,
-                }
+                Some(match value {
+                    TomlValue::String(value) => Ok((key, value.clone())),
+                    _ => Err(anyhow::anyhow!(
+                        "build.{key} in the template must be a string"
+                    )),
+                })
             })
             .collect();
-        if rustflags.is_empty() && compiler_wrapper.is_none() {
+        let build_values = build_values?;
+        let rustflags: Vec<(TemplateItemId, String)> = template
+            .iter_items()
+            .filter_map(|(id, value)| format_rustflag(id, value).map(|flag| (id, flag)))
+            .collect();
+        if rustflags.is_empty() && build_values.is_empty() {
             return Ok(self);
         }
 
@@ -81,18 +65,18 @@ impl CargoConfig {
             .document
             .entry("build")
             .or_insert(table())
-            .as_table_mut()
+            .as_table_like_mut()
             .ok_or_else(|| anyhow::anyhow!("The build item in config.toml is not a table"))?;
 
-        if let Some(wrapper) = compiler_wrapper {
-            let wrapper_item = build.entry("rustc-wrapper").or_insert(value(wrapper));
-            if wrapper_item.as_str() != Some(wrapper) {
-                let wrapper_value = wrapper_item.as_value_mut().ok_or_else(|| {
-                    anyhow::anyhow!("build.rustc-wrapper in config.toml is not a string")
-                })?;
-                let decor = wrapper_value.decor().clone();
-                *wrapper_value = Value::String(Formatted::new(wrapper.to_string()));
-                *wrapper_value.decor_mut() = decor;
+        for (key, build_value) in build_values {
+            let build_item = build.entry(key).or_insert(value(build_value.clone()));
+            if build_item.as_str() != Some(build_value.as_str()) {
+                let value = build_item
+                    .as_value_mut()
+                    .ok_or_else(|| anyhow::anyhow!("build.{key} in config.toml is not a string"))?;
+                let decor = value.decor().clone();
+                *value = Value::String(Formatted::new(build_value));
+                *value.decor_mut() = decor;
             }
         }
 
@@ -101,49 +85,13 @@ impl CargoConfig {
         }
         let flags = build.entry("rustflags").or_insert(value(Array::new()));
 
-        let flag_map: HashMap<_, _> = rustflags
-            .iter()
-            .filter_map(|rustflag| {
-                let (key, value) = rustflag.split_once('=')?;
-                Some((key.to_string(), value.to_string()))
-            })
-            .collect();
-
         // build.rustflags can be either a string or an array of strings
         if let Some(array) = flags.as_array_mut() {
-            // Find flags with the same key (e.g. -Ckey=val) and replace their values, to avoid
-            // duplicating the keys.
-            for item in array.iter_mut() {
-                if let Some(val) = item.as_str()
-                    && let Some((key, _)) = val.split_once('=')
-                    && let Some(new_value) = flag_map.get(key)
-                {
-                    let decor = item.decor().clone();
-                    let mut new_value = Value::String(Formatted::new(format!("{key}={new_value}")));
-                    *new_value.decor_mut() = decor;
-                    *item = new_value;
-                }
-            }
-
-            let existing_flags: HashSet<String> = array
-                .iter()
-                .filter_map(|v| v.as_str())
-                .map(|s| s.to_string())
-                .collect();
-            for arg in rustflags {
-                if !existing_flags.contains(&arg) {
-                    array.push(Value::String(Formatted::new(arg)));
-                }
-            }
+            edit_rustflags(array, &rustflags);
         } else if let Some(val) = flags.as_value_mut().filter(|v| v.is_str()) {
-            let flattened_flags = rustflags.join(" ");
-            let mut original_value = val.as_str().unwrap_or_default().to_string();
-            if !original_value.ends_with(' ') && !original_value.is_empty() {
-                original_value.push(' ');
-            }
-            original_value.push_str(&flattened_flags);
+            let new_value = edit_rustflags_string(val.as_str().unwrap_or_default(), &rustflags);
             let decor = val.decor().clone();
-            *val = Value::String(Formatted::new(original_value));
+            *val = Value::String(Formatted::new(new_value));
             *val.decor_mut() = decor;
         } else {
             return Err(anyhow::anyhow!(
@@ -163,6 +111,215 @@ impl CargoConfig {
     }
 }
 
+#[derive(Clone, Copy)]
+enum RustflagValueKind {
+    String,
+    Int,
+}
+
+#[derive(Clone, Copy)]
+enum ConfigItemEncoding {
+    BuildString {
+        key: &'static str,
+    },
+    Rustflag {
+        option: &'static str,
+        key: &'static str,
+        value_kind: RustflagValueKind,
+    },
+}
+
+#[derive(Clone, Copy)]
+struct ConfigItemDescriptor {
+    id: TemplateItemId,
+    encoding: ConfigItemEncoding,
+}
+
+const CONFIG_ITEMS: [ConfigItemDescriptor; 4] = [
+    ConfigItemDescriptor {
+        id: TemplateItemId::CompilerWrapper,
+        encoding: ConfigItemEncoding::BuildString {
+            key: "rustc-wrapper",
+        },
+    },
+    ConfigItemDescriptor {
+        id: TemplateItemId::TargetCpuInstructionSet,
+        encoding: ConfigItemEncoding::Rustflag {
+            option: "-C",
+            key: "target-cpu=",
+            value_kind: RustflagValueKind::String,
+        },
+    },
+    ConfigItemDescriptor {
+        id: TemplateItemId::FrontendThreads,
+        encoding: ConfigItemEncoding::Rustflag {
+            option: "-Z",
+            key: "threads=",
+            value_kind: RustflagValueKind::Int,
+        },
+    },
+    ConfigItemDescriptor {
+        id: TemplateItemId::Linker,
+        encoding: ConfigItemEncoding::Rustflag {
+            option: "-C",
+            key: "link-arg=-fuse-ld=",
+            value_kind: RustflagValueKind::String,
+        },
+    },
+];
+
+fn config_item_descriptor(id: TemplateItemId) -> Option<&'static ConfigItemDescriptor> {
+    CONFIG_ITEMS.iter().find(|descriptor| descriptor.id == id)
+}
+
+fn format_rustflag(id: TemplateItemId, value: &TomlValue) -> Option<String> {
+    let descriptor = config_item_descriptor(id)?;
+    let ConfigItemEncoding::Rustflag { option, key, .. } = descriptor.encoding else {
+        return None;
+    };
+    let value = toml_value_to_string(value);
+    Some(format!("{option}{key}{value}"))
+}
+
+fn format_split_rustflag_argument(id: TemplateItemId, flag: &str) -> Option<String> {
+    let descriptor = config_item_descriptor(id)?;
+    let ConfigItemEncoding::Rustflag { option, key, .. } = descriptor.encoding else {
+        return None;
+    };
+    let value = flag.strip_prefix(option)?.strip_prefix(key)?;
+    Some(format!("{key}{value}"))
+}
+
+fn toml_value_to_string(value: &TomlValue) -> String {
+    match value {
+        TomlValue::String(value) => value.clone(),
+        TomlValue::Int(value) => value.to_string(),
+        TomlValue::Bool(value) => value.to_string(),
+    }
+}
+
+fn parse_rustflag(flag: &str) -> Option<TemplateItemId> {
+    CONFIG_ITEMS.iter().find_map(|descriptor| {
+        let ConfigItemEncoding::Rustflag {
+            option,
+            key,
+            value_kind,
+        } = descriptor.encoding
+        else {
+            return None;
+        };
+        let value = flag.strip_prefix(option)?.strip_prefix(key)?;
+        parse_rustflag_value(value, value_kind)?;
+        Some(descriptor.id)
+    })
+}
+
+fn parse_split_rustflag(option: &str, argument: &str) -> Option<TemplateItemId> {
+    CONFIG_ITEMS.iter().find_map(|descriptor| {
+        let ConfigItemEncoding::Rustflag {
+            option: expected_option,
+            key,
+            value_kind,
+        } = descriptor.encoding
+        else {
+            return None;
+        };
+        if option != expected_option {
+            return None;
+        }
+        let value = argument.strip_prefix(key)?;
+        parse_rustflag_value(value, value_kind)?;
+        Some(descriptor.id)
+    })
+}
+
+fn parse_rustflag_value(value: &str, value_kind: RustflagValueKind) -> Option<TomlValue> {
+    match value_kind {
+        RustflagValueKind::String => Some(TomlValue::String(value.to_string())),
+        RustflagValueKind::Int => Some(TomlValue::Int(value.parse().ok()?)),
+    }
+}
+
+#[derive(Debug)]
+struct RustflagMatch {
+    id: TemplateItemId,
+    start: usize,
+    token_count: usize,
+}
+
+fn parse_rustflags(flags: &[&str]) -> Vec<RustflagMatch> {
+    let mut matches = Vec::new();
+    let mut index = 0;
+    while index < flags.len() {
+        if let Some(id) = parse_rustflag(flags[index]) {
+            matches.push(RustflagMatch {
+                id,
+                start: index,
+                token_count: 1,
+            });
+            index += 1;
+        } else if let Some(id) = flags
+            .get(index + 1)
+            .and_then(|argument| parse_split_rustflag(flags[index], argument))
+        {
+            matches.push(RustflagMatch {
+                id,
+                start: index,
+                token_count: 2,
+            });
+            index += 2;
+        } else {
+            index += 1;
+        }
+    }
+    matches
+}
+
+fn edit_rustflags(array: &mut Array, updates: &[(TemplateItemId, String)]) {
+    let matches = {
+        let existing: Vec<_> = array
+            .iter()
+            .map(|value| value.as_str().unwrap_or_default())
+            .collect();
+        parse_rustflags(&existing)
+    };
+    let mut replaced = HashSet::new();
+    for flag in matches.into_iter().rev() {
+        if let Some((_, new_value)) = updates.iter().find(|(id, _)| *id == flag.id) {
+            let replacement = if flag.token_count == 1 {
+                new_value.clone()
+            } else {
+                format_split_rustflag_argument(flag.id, new_value)
+                    .expect("Parsed rustflag is missing from the descriptor registry")
+            };
+            let item = array
+                .get_mut(flag.start + flag.token_count - 1)
+                .expect("Parsed rustflag index is outside of the source array");
+            let decor = item.decor().clone();
+            let mut replacement = Value::String(Formatted::new(replacement));
+            *replacement.decor_mut() = decor;
+            *item = replacement;
+            replaced.insert(flag.id);
+        }
+    }
+    for (id, arg) in updates {
+        if !replaced.contains(id) {
+            array.push(Value::String(Formatted::new(arg.clone())));
+        }
+    }
+}
+
+/// Cargo splits a string-valued `build.rustflags` on whitespace, so it is edited as a flag array.
+fn edit_rustflags_string(original: &str, updates: &[(TemplateItemId, String)]) -> String {
+    let mut array: Array = original.split_ascii_whitespace().collect();
+    edit_rustflags(&mut array, updates);
+    array
+        .iter()
+        .filter_map(Value::as_str)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 pub fn config_path_from_manifest_path(manifest_path: &Path) -> PathBuf {
     manifest_path
         .parent()
@@ -172,6 +329,7 @@ pub fn config_path_from_manifest_path(manifest_path: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
     use std::str::FromStr;
 
     use toml_edit::DocumentMut;
@@ -179,6 +337,33 @@ mod tests {
     use crate::template::TemplateBuilder;
     use crate::workspace::manifest::BuiltinProfile;
     use crate::{CargoConfig, Template, TemplateItemId, TomlValue};
+
+    use super::{
+        CONFIG_ITEMS, ConfigItemEncoding, RustflagValueKind, config_item_descriptor,
+        format_rustflag, parse_rustflag,
+    };
+
+    #[test]
+    fn config_item_descriptors_are_unique_and_rustflags_round_trip() {
+        let mut ids = HashSet::new();
+        for descriptor in CONFIG_ITEMS {
+            assert!(ids.insert(descriptor.id));
+            assert_eq!(
+                config_item_descriptor(descriptor.id).map(|item| item.id),
+                Some(descriptor.id)
+            );
+
+            let ConfigItemEncoding::Rustflag { value_kind, .. } = descriptor.encoding else {
+                continue;
+            };
+            let value = match value_kind {
+                RustflagValueKind::String => TomlValue::String("sample".to_string()),
+                RustflagValueKind::Int => TomlValue::Int(4),
+            };
+            let flag = format_rustflag(descriptor.id, &value).unwrap();
+            assert_eq!(parse_rustflag(&flag), Some(descriptor.id));
+        }
+    }
 
     #[test]
     fn create_rustflags() {
@@ -292,6 +477,70 @@ rustflags = [
             "-Ctarget-cpu=native", # Foo
             "-Cbar=baz", # Foo
         ]
+        "###);
+    }
+
+    #[test]
+    fn replace_rustflag_value_in_string() {
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
+        let config = create_config(
+            r#"
+[build]
+rustflags = "--cfg 'foo=bar baz'  -Ctarget-cpu=generic"
+"#,
+        );
+        let config = config.apply_template(&template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = "--cfg 'foo=bar baz' -Ctarget-cpu=native"
+        "###);
+    }
+
+    #[test]
+    fn replace_linker_without_overwriting_other_link_args() {
+        let template = create_template(&[(TemplateItemId::Linker, "mold")]);
+        let config = create_config(
+            r#"
+[build]
+rustflags = ["-Clink-arg=-Wl,--as-needed", "-Clink-arg=-fuse-ld=lld"]
+"#,
+        );
+        let config = config.apply_template(&template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = ["-Clink-arg=-Wl,--as-needed", "-Clink-arg=-fuse-ld=mold"]
+        "###);
+    }
+
+    #[test]
+    fn replace_split_rustflag_in_array() {
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
+        let config = create_config(
+            r#"
+[build]
+rustflags = ["-C", "target-cpu=generic", "--cfg", "x"]
+"#,
+        );
+        let config = config.apply_template(&template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = ["-C", "target-cpu=native", "--cfg", "x"]
+        "###);
+    }
+
+    #[test]
+    fn replace_split_rustflag_in_string() {
+        let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
+        let config = create_config(
+            r#"
+[build]
+rustflags = "-C target-cpu=generic -Cforce-frame-pointers=yes"
+"#,
+        );
+        let config = config.apply_template(&template).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = "-C target-cpu=native -Cforce-frame-pointers=yes"
         "###);
     }
 
