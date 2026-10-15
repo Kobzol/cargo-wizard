@@ -258,6 +258,7 @@ impl KnownCargoOptions {
                 .build(),
             TemplateItemId::DebugInfo => MetadataBuilder::default()
                 .bool("Disable debuginfo", false)
+                .int("Disable debuginfo (level 0)", 0)
                 .string("Enable line directives", "line-directives-only")
                 .string("Enable line tables", "line-tables-only")
                 .int("Limited debuginfo", 1)

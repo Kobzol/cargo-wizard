@@ -19,6 +19,12 @@ mod known_options;
 mod prompts;
 mod utils;
 
+#[derive(Clone, Copy, Debug)]
+pub enum TemplateSource {
+    CurrentProject,
+    Predefined(PredefinedTemplateKind),
+}
+
 pub fn run_root_dialog(
     cli_config: CliConfig,
     cargo_options: KnownCargoOptions,
@@ -27,24 +33,35 @@ pub fn run_root_dialog(
     let manifest_path = resolve_manifest_path().context("Cannot resolve Cargo.toml path")?;
     let workspace = parse_workspace(&manifest_path)?;
 
-    let existing_profiles = workspace
-        .existing_profiles()
+    let existing_profile_names = workspace.existing_profiles();
+    let existing_profiles = existing_profile_names
         .iter()
         .filter_map(|s| profile_from_str(s).ok())
         .collect();
     let profile = prompt_select_profile(&cli_config, existing_profiles)?;
 
-    let template_kind = prompt_select_template(&cli_config)?;
-    let mut template = template_kind.build_template(&options);
+    let current_template = workspace.load_template(&profile)?;
+    let profile_exists = profile.is_builtin()
+        || existing_profile_names
+            .iter()
+            .any(|name| name == profile.name());
+    let template_source =
+        prompt_select_template(&cli_config, profile_exists && !current_template.is_empty())?;
+    let mut template = match template_source {
+        TemplateSource::CurrentProject => current_template,
+        TemplateSource::Predefined(template) => template.build_template(&options),
+    };
+    let replace = matches!(template_source, TemplateSource::CurrentProject);
 
     loop {
         template = prompt_customize_template(&cli_config, &cargo_options, template)?;
 
-        let diff_result = prompt_confirm_diff(&cli_config, workspace.clone(), &profile, &template)?;
+        let diff_result =
+            prompt_confirm_diff(&cli_config, workspace.clone(), &profile, &template, replace)?;
         match diff_result {
             ConfirmDiffPromptResponse::Accepted(workspace) => {
                 workspace.write()?;
-                on_template_applied(&cargo_options, template_kind, &template, &profile);
+                on_template_applied(&cargo_options, template_source, &template, &profile);
                 break;
             }
             ConfirmDiffPromptResponse::Denied => {}
@@ -60,17 +77,18 @@ pub fn run_root_dialog(
 
 pub fn on_template_applied(
     options: &KnownCargoOptions,
-    template_kind: PredefinedTemplateKind,
+    template_source: TemplateSource,
     template: &Template,
     profile: &Profile,
 ) {
     utils::clear_line();
     println!(
         "✅ Template {} applied to profile {}.",
-        utils::template_style().apply_to(match template_kind {
-            PredefinedTemplateKind::FastCompile => "FastCompile",
-            PredefinedTemplateKind::FastRuntime => "FastRuntime",
-            PredefinedTemplateKind::MinSize => "MinSize",
+        utils::template_style().apply_to(match template_source {
+            TemplateSource::CurrentProject => "Current project settings",
+            TemplateSource::Predefined(PredefinedTemplateKind::FastCompile) => "FastCompile",
+            TemplateSource::Predefined(PredefinedTemplateKind::FastRuntime) => "FastRuntime",
+            TemplateSource::Predefined(PredefinedTemplateKind::MinSize) => "MinSize",
         }),
         utils::profile_style().apply_to(profile.name())
     );
@@ -103,6 +121,9 @@ pub fn on_template_applied(
         println!("⚠️  You will have to use a nightly compiler.");
     }
 
+    let TemplateSource::Predefined(template_kind) = template_source else {
+        return;
+    };
     match template_kind {
         PredefinedTemplateKind::FastCompile => {
             if !requires_nightly {

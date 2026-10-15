@@ -477,6 +477,54 @@ fn dialog_unset_item() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test]
+fn dialog_unset_loaded_current_setting() -> anyhow::Result<()> {
+    let mut project = init_cargo_project()?;
+    project.manifest(
+        r#"[package]
+name = "foo"
+version = "0.1.0"
+edition = "2021"
+
+[profile.dev]
+debug = 1
+lto = true
+"#,
+    );
+
+    DialogBuilder::default()
+        .template("Current project settings")
+        .customize_item("Debug info", "<Unset value>")
+        .run(&project)?;
+
+    insta::assert_snapshot!(project.read_manifest(), @r###"
+    [package]
+    name = "foo"
+    version = "0.1.0"
+    edition = "2021"
+
+    [profile.dev]
+    lto = true
+    "###);
+    Ok(())
+}
+
+#[test]
+fn dialog_hides_current_settings_without_configured_values() -> anyhow::Result<()> {
+    let project = init_cargo_project()?;
+
+    let mut terminal = DialogBuilder::default().start(&project)?;
+    terminal.expect("Select the profile that you want to update/create")?;
+    terminal.select_line("dev")?;
+    terminal.expect("Select the template that you want to apply")?;
+    let options = terminal.session.exp_string("FastCompile")?;
+    assert!(
+        !options.contains("Current project settings"),
+        "unexpected option in: {options}"
+    );
+    Ok(())
+}
+
 enum CustomValue {
     Constant(String),
     Custom(String),
