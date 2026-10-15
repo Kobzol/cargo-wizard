@@ -19,13 +19,32 @@ pub struct CargoWorkspace {
 }
 
 impl CargoWorkspace {
+    /// Loads the supported settings explicitly configured for a profile and workspace.
+    pub fn load_template(&self, profile: &Profile) -> anyhow::Result<Template> {
+        let mut template = self.manifest.load_template(profile)?;
+        self.config.load_into_template(&mut template)?;
+        Ok(template)
+    }
+
+    /// Applies the template, keeping existing settings that it does not set.
     pub fn apply_template(
         self,
         profile: &Profile,
         template: &Template,
     ) -> anyhow::Result<ModifiedWorkspace> {
+        self.apply(profile, template, false)
+    }
+
+    /// Applies the template. With `replace`, also removes the supported settings that it does not
+    /// set.
+    pub fn apply(
+        self,
+        profile: &Profile,
+        template: &Template,
+        replace: bool,
+    ) -> anyhow::Result<ModifiedWorkspace> {
         let old_manifest = self.manifest.clone();
-        let new_manifest = self.manifest.apply_template(profile, template)?;
+        let new_manifest = self.manifest.apply_template(profile, template, replace)?;
         let manifest = if old_manifest.get_text() == new_manifest.get_text() {
             ModificationResult::NoChange
         } else {
@@ -36,7 +55,7 @@ impl CargoWorkspace {
         };
 
         let old_config = self.config.clone();
-        let new_config = self.config.apply_template(template)?;
+        let new_config = self.config.apply_template(template, replace)?;
         let config = if old_config.get_text() == new_config.get_text() {
             ModificationResult::NoChange
         } else {

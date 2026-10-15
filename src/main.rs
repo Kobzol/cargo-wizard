@@ -12,7 +12,8 @@ use cargo_wizard::{
 
 use crate::cli::CliConfig;
 use crate::dialog::{
-    DialogError, KnownCargoOptions, on_template_applied, profile_from_str, run_root_dialog,
+    DialogError, KnownCargoOptions, TemplateSource, on_template_applied, profile_from_str,
+    run_root_dialog,
 };
 
 mod cli;
@@ -156,7 +157,12 @@ fn main() -> anyhow::Result<()> {
                     let template = args.template.build_template(&options);
                     let modified = workspace.apply_template(&args.profile.0, &template)?;
                     modified.write()?;
-                    on_template_applied(&cargo_options, args.template, &template, &args.profile.0);
+                    on_template_applied(
+                        &cargo_options,
+                        TemplateSource::Predefined(args.template),
+                        &template,
+                        &args.profile.0,
+                    );
                 }
                 None => {
                     if let Err(error) = run_root_dialog(cli_config, cargo_options, options) {

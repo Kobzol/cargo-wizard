@@ -1,9 +1,17 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::{Template, TemplateItemId, TomlValue};
 use anyhow::Context;
-use toml_edit::{Array, DocumentMut, Formatted, Value, table, value};
+use toml_edit::{Array, DocumentMut, Item, Value, table, value};
+
+/// Template items stored in `build.rustflags` as `{option}{key}{value}`, or as the two
+/// arguments `{option} {key}{value}`.
+const RUSTFLAGS: [(TemplateItemId, &str, &str); 3] = [
+    (TemplateItemId::TargetCpuInstructionSet, "-C", "target-cpu="),
+    (TemplateItemId::FrontendThreads, "-Z", "threads="),
+    (TemplateItemId::Linker, "-C", "link-arg=-fuse-ld="),
+];
 
 /// Config stored in `.cargo/config.toml` file.
 #[derive(Debug, Clone)]
@@ -36,8 +44,42 @@ impl CargoConfig {
         self.document.to_string()
     }
 
-    pub fn apply_template(mut self, template: &Template) -> anyhow::Result<Self> {
-        let compiler_wrapper = template
+    /// Adds the supported workspace-global Cargo config values to a template.
+    pub fn load_into_template(&self, template: &mut Template) -> anyhow::Result<()> {
+        let Some(build) = self.document.get("build").and_then(Item::as_table_like) else {
+            return Ok(());
+        };
+        if let Some(wrapper) = build.get("rustc-wrapper") {
+            let wrapper = wrapper.as_str().ok_or_else(|| {
+                anyhow::anyhow!("build.rustc-wrapper in config.toml is not a string")
+            })?;
+            template.insert_item(TemplateItemId::CompilerWrapper, TomlValue::string(wrapper));
+        }
+        let tokens: Vec<&str> = match build.get("rustflags") {
+            Some(Item::Value(Value::Array(array))) => array
+                .iter()
+                .map(|flag| {
+                    flag.as_str().ok_or_else(|| {
+                        anyhow::anyhow!("build.rustflags in config.toml must contain only strings")
+                    })
+                })
+                .collect::<anyhow::Result<_>>()?,
+            Some(Item::Value(Value::String(flags))) => {
+                flags.value().split_ascii_whitespace().collect()
+            }
+            Some(_) => anyhow::bail!("build.rustflags in config.toml is not a string or an array"),
+            None => Vec::new(),
+        };
+        for flag in find_rustflags(&tokens) {
+            template.insert_item(flag.id, flag.value);
+        }
+        Ok(())
+    }
+
+    /// Sets the template's config items. With `replace`, also removes the supported items that the
+    /// template does not set.
+    pub fn apply_template(mut self, template: &Template, replace: bool) -> anyhow::Result<Self> {
+        let wrapper = template
             .get_item(TemplateItemId::CompilerWrapper)
             .map(|value| match value {
                 TomlValue::String(value) => Ok(value.as_str()),
@@ -46,34 +88,22 @@ impl CargoConfig {
                 )),
             })
             .transpose()?;
-        let rustflags: Vec<String> = template
+        let rustflags: Vec<(TemplateItemId, String)> = template
             .iter_items()
             .filter_map(|(id, value)| {
+                let (_, option, key) = RUSTFLAGS.iter().find(|(flag_id, ..)| *flag_id == id)?;
                 let value = match value {
                     TomlValue::String(value) => value.clone(),
                     TomlValue::Int(value) => value.to_string(),
                     TomlValue::Bool(value) => value.to_string(),
                 };
-                match id {
-                    TemplateItemId::TargetCpuInstructionSet => {
-                        Some(format!("-Ctarget-cpu={value}"))
-                    }
-                    TemplateItemId::FrontendThreads => Some(format!("-Zthreads={value}")),
-                    TemplateItemId::Linker => Some(format!("-Clink-arg=-fuse-ld={value}")),
-                    TemplateItemId::CompilerWrapper => None,
-                    TemplateItemId::DebugInfo
-                    | TemplateItemId::Strip
-                    | TemplateItemId::Lto
-                    | TemplateItemId::CodegenUnits
-                    | TemplateItemId::Panic
-                    | TemplateItemId::OptimizationLevel
-                    | TemplateItemId::CodegenBackend
-                    | TemplateItemId::Incremental
-                    | TemplateItemId::SplitDebugInfo => None,
-                }
+                Some((id, format!("{option}{key}{value}")))
             })
             .collect();
-        if rustflags.is_empty() && compiler_wrapper.is_none() {
+        if wrapper.is_none()
+            && rustflags.is_empty()
+            && (!replace || !self.document.contains_key("build"))
+        {
             return Ok(self);
         }
 
@@ -81,74 +111,40 @@ impl CargoConfig {
             .document
             .entry("build")
             .or_insert(table())
-            .as_table_mut()
+            .as_table_like_mut()
             .ok_or_else(|| anyhow::anyhow!("The build item in config.toml is not a table"))?;
 
-        if let Some(wrapper) = compiler_wrapper {
-            let wrapper_item = build.entry("rustc-wrapper").or_insert(value(wrapper));
-            if wrapper_item.as_str() != Some(wrapper) {
-                let wrapper_value = wrapper_item.as_value_mut().ok_or_else(|| {
+        match wrapper {
+            Some(wrapper) => {
+                let item = build.entry("rustc-wrapper").or_insert(value(wrapper));
+                let item = item.as_value_mut().ok_or_else(|| {
                     anyhow::anyhow!("build.rustc-wrapper in config.toml is not a string")
                 })?;
-                let decor = wrapper_value.decor().clone();
-                *wrapper_value = Value::String(Formatted::new(wrapper.to_string()));
-                *wrapper_value.decor_mut() = decor;
+                set_string(item, wrapper);
             }
+            None if replace => {
+                build.remove("rustc-wrapper");
+            }
+            None => {}
         }
 
-        if rustflags.is_empty() {
+        if rustflags.is_empty() && (!replace || !build.contains_key("rustflags")) {
             return Ok(self);
         }
-        let flags = build.entry("rustflags").or_insert(value(Array::new()));
-
-        let flag_map: HashMap<_, _> = rustflags
-            .iter()
-            .filter_map(|rustflag| {
-                let (key, value) = rustflag.split_once('=')?;
-                Some((key.to_string(), value.to_string()))
-            })
-            .collect();
-
         // build.rustflags can be either a string or an array of strings
-        if let Some(array) = flags.as_array_mut() {
-            // Find flags with the same key (e.g. -Ckey=val) and replace their values, to avoid
-            // duplicating the keys.
-            for item in array.iter_mut() {
-                if let Some(val) = item.as_str()
-                    && let Some((key, _)) = val.split_once('=')
-                    && let Some(new_value) = flag_map.get(key)
-                {
-                    let decor = item.decor().clone();
-                    let mut new_value = Value::String(Formatted::new(format!("{key}={new_value}")));
-                    *new_value.decor_mut() = decor;
-                    *item = new_value;
+        match build.entry("rustflags").or_insert(value(Array::new())) {
+            Item::Value(Value::Array(array)) => edit_rustflags(array, &rustflags, replace),
+            Item::Value(value @ Value::String(_)) => {
+                // Cargo splits a string-valued build.rustflags on whitespace.
+                let original = value.as_str().unwrap_or_default();
+                let mut array: Array = original.split_ascii_whitespace().collect();
+                edit_rustflags(&mut array, &rustflags, replace);
+                let tokens: Vec<_> = array.iter().filter_map(Value::as_str).collect();
+                if !tokens.iter().copied().eq(original.split_ascii_whitespace()) {
+                    set_string(value, &tokens.join(" "));
                 }
             }
-
-            let existing_flags: HashSet<String> = array
-                .iter()
-                .filter_map(|v| v.as_str())
-                .map(|s| s.to_string())
-                .collect();
-            for arg in rustflags {
-                if !existing_flags.contains(&arg) {
-                    array.push(Value::String(Formatted::new(arg)));
-                }
-            }
-        } else if let Some(val) = flags.as_value_mut().filter(|v| v.is_str()) {
-            let flattened_flags = rustflags.join(" ");
-            let mut original_value = val.as_str().unwrap_or_default().to_string();
-            if !original_value.ends_with(' ') && !original_value.is_empty() {
-                original_value.push(' ');
-            }
-            original_value.push_str(&flattened_flags);
-            let decor = val.decor().clone();
-            *val = Value::String(Formatted::new(original_value));
-            *val.decor_mut() = decor;
-        } else {
-            return Err(anyhow::anyhow!(
-                "build.rustflags in config.toml is not a string or an array"
-            ));
+            _ => anyhow::bail!("build.rustflags in config.toml is not a string or an array"),
         }
 
         Ok(self)
@@ -160,6 +156,87 @@ impl CargoConfig {
         std::fs::write(&self.path, self.document.to_string())
             .context("Cannot write config.toml manifest")?;
         Ok(())
+    }
+}
+
+/// Replaces a string value, keeping its comments and whitespace.
+fn set_string(item: &mut Value, new_value: &str) {
+    if item.as_str() != Some(new_value) {
+        let decor = item.decor().clone();
+        *item = new_value.into();
+        *item.decor_mut() = decor;
+    }
+}
+
+/// A supported rustflag found at `tokens[start]`, split over two tokens if `split`.
+struct FoundRustflag {
+    id: TemplateItemId,
+    value: TomlValue,
+    start: usize,
+    split: bool,
+}
+
+fn find_rustflags(tokens: &[&str]) -> Vec<FoundRustflag> {
+    let mut found = Vec::new();
+    let mut start = 0;
+    while start < tokens.len() {
+        let next = tokens.get(start + 1).copied().unwrap_or_default();
+        let flag = RUSTFLAGS.iter().find_map(|&(id, option, key)| {
+            let rest = tokens[start].strip_prefix(option)?;
+            let split = rest.is_empty();
+            let value = if split { next } else { rest }.strip_prefix(key)?;
+            let value = match id {
+                TemplateItemId::FrontendThreads => TomlValue::Int(value.parse().ok()?),
+                _ => TomlValue::string(value),
+            };
+            Some(FoundRustflag {
+                id,
+                value,
+                start,
+                split,
+            })
+        });
+        start += 1 + flag.as_ref().is_some_and(|flag| flag.split) as usize;
+        found.extend(flag);
+    }
+    found
+}
+
+/// Replaces the existing flags of `updates` in place and appends the missing ones. With `replace`,
+/// removes the supported flags that are not in `updates`.
+fn edit_rustflags(array: &mut Array, updates: &[(TemplateItemId, String)], replace: bool) {
+    let tokens: Vec<_> = array
+        .iter()
+        .map(|value| value.as_str().unwrap_or_default())
+        .collect();
+    let found = find_rustflags(&tokens);
+    let mut updated = HashSet::new();
+    for flag in found.into_iter().rev() {
+        let end = flag.start + flag.split as usize;
+        if let Some((_, new_flag)) = updates.iter().find(|(id, _)| *id == flag.id) {
+            let option_len = if flag.split {
+                array
+                    .get(flag.start)
+                    .and_then(Value::as_str)
+                    .map_or(0, str::len)
+            } else {
+                0
+            };
+            let item = array
+                .get_mut(end)
+                .expect("Found rustflag is outside of the array");
+            set_string(item, &new_flag[option_len..]);
+            updated.insert(flag.id);
+        } else if replace {
+            for index in (flag.start..=end).rev() {
+                array.remove(index);
+            }
+        }
+    }
+    for (id, flag) in updates {
+        if !updated.contains(id) {
+            array.push(flag.as_str());
+        }
     }
 }
 
@@ -183,7 +260,9 @@ mod tests {
     #[test]
     fn create_rustflags() {
         let template = create_template(&[(TemplateItemId::TargetCpuInstructionSet, "native")]);
-        let config = create_empty_config().apply_template(&template).unwrap();
+        let config = create_empty_config()
+            .apply_template(&template, false)
+            .unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
         [build]
         rustflags = ["-Ctarget-cpu=native"]
@@ -199,7 +278,7 @@ mod tests {
 rustflags = ["-Cbar=foo"]
 "#,
         );
-        let config = config.apply_template(&template).unwrap();
+        let config = config.apply_template(&template, false).unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
     [build]
     rustflags = ["-Cbar=foo", "-Ctarget-cpu=native"]
@@ -215,7 +294,7 @@ rustflags = ["-Cbar=foo"]
 rustflags = ["-Ctarget-cpu=foo"]
 "#,
         );
-        let config = config.apply_template(&template).unwrap();
+        let config = config.apply_template(&template, false).unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
         [build]
         rustflags = ["-Ctarget-cpu=foo"]
@@ -231,7 +310,7 @@ rustflags = ["-Ctarget-cpu=foo"]
 rustflags = ""
 "#,
         );
-        let config = config.apply_template(&template).unwrap();
+        let config = config.apply_template(&template, false).unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
             [build]
             rustflags = "-Ctarget-cpu=native"
@@ -247,7 +326,7 @@ rustflags = ""
 rustflags = "-Cfoo=bar"
 "#,
         );
-        let config = config.apply_template(&template).unwrap();
+        let config = config.apply_template(&template, false).unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
         [build]
         rustflags = "-Cfoo=bar -Ctarget-cpu=native"
@@ -263,7 +342,7 @@ rustflags = "-Cfoo=bar"
 rustflags = "-Cfoo=bar" # Foo
 "#,
         );
-        let config = config.apply_template(&template).unwrap();
+        let config = config.apply_template(&template, false).unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
         [build]
         rustflags = "-Cfoo=bar -Ctarget-cpu=native" # Foo
@@ -283,7 +362,7 @@ rustflags = [
 ]
 "#,
         );
-        let config = config.apply_template(&template).unwrap();
+        let config = config.apply_template(&template, false).unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
 
         [build]
@@ -296,9 +375,27 @@ rustflags = [
     }
 
     #[test]
+    fn replace_linker_without_overwriting_other_link_args() {
+        let template = create_template(&[(TemplateItemId::Linker, "mold")]);
+        let config = create_config(
+            r#"
+[build]
+rustflags = ["-Clink-arg=-Wl,--as-needed", "-Clink-arg=-fuse-ld=lld"]
+"#,
+        );
+        let config = config.apply_template(&template, false).unwrap();
+        insta::assert_snapshot!(config.get_text(), @r###"
+        [build]
+        rustflags = ["-Clink-arg=-Wl,--as-needed", "-Clink-arg=-fuse-ld=mold"]
+        "###);
+    }
+
+    #[test]
     fn create_compiler_wrapper() {
         let template = create_template(&[(TemplateItemId::CompilerWrapper, "sccache")]);
-        let config = create_empty_config().apply_template(&template).unwrap();
+        let config = create_empty_config()
+            .apply_template(&template, false)
+            .unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
         [build]
         rustc-wrapper = "sccache"
@@ -311,7 +408,9 @@ rustflags = [
             (TemplateItemId::CompilerWrapper, "sccache"),
             (TemplateItemId::TargetCpuInstructionSet, "native"),
         ]);
-        let config = create_empty_config().apply_template(&template).unwrap();
+        let config = create_empty_config()
+            .apply_template(&template, false)
+            .unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
         [build]
         rustc-wrapper = "sccache"
@@ -328,8 +427,8 @@ rustflags = [
 rustc-wrapper = "old-wrapper" # Wrapper
 "#,
         );
-        let config = config.apply_template(&template).unwrap();
-        let config = config.apply_template(&template).unwrap();
+        let config = config.apply_template(&template, false).unwrap();
+        let config = config.apply_template(&template, false).unwrap();
         insta::assert_snapshot!(config.get_text(), @r###"
         [build]
         rustc-wrapper = "sccache" # Wrapper

@@ -34,6 +34,7 @@ impl CargoProject {
         self
     }
 
+    #[cfg(target_os = "linux")]
     pub fn file_exists<P: AsRef<Path>>(&self, path: P) -> bool {
         self.path(path.as_ref()).is_file()
     }

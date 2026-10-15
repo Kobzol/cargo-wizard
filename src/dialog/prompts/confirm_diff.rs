@@ -23,8 +23,9 @@ pub fn prompt_confirm_diff(
     workspace: CargoWorkspace,
     profile: &Profile,
     template: &Template,
+    replace: bool,
 ) -> PromptResult<ConfirmDiffPromptResponse> {
-    let modified = workspace.apply_template(profile, template)?;
+    let modified = workspace.apply(profile, template, replace)?;
 
     // Cargo.toml
     let manifest_diff = match &modified.manifest() {

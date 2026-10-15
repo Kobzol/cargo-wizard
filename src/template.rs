@@ -1,19 +1,19 @@
 use indexmap::IndexMap;
 
 use crate::toml::TomlValue;
-use crate::workspace::manifest::BuiltinProfile;
+use crate::workspace::manifest::{BuiltinProfile, Profile};
 
 /// A set of Cargo profile items and .cargo/config.toml config items that can be applied to a
 /// Cargo workspace.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Template {
-    inherits: BuiltinProfile,
+    inherits: Profile,
     items: IndexMap<TemplateItemId, TomlValue>,
 }
 
 impl Template {
-    pub fn inherits(&self) -> BuiltinProfile {
-        self.inherits
+    pub fn inherits(&self) -> &Profile {
+        &self.inherits
     }
 
     pub fn iter_items(&self) -> impl Iterator<Item = (TemplateItemId, &TomlValue)> {
@@ -31,18 +31,22 @@ impl Template {
     pub fn remove_item(&mut self, id: TemplateItemId) {
         self.items.shift_remove(&id);
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
 }
 
 #[doc(hidden)]
 pub struct TemplateBuilder {
-    inherits: BuiltinProfile,
+    inherits: Profile,
     profile: IndexMap<TemplateItemId, TomlValue>,
 }
 
 impl TemplateBuilder {
-    pub fn new(inherits: BuiltinProfile) -> Self {
+    pub fn new(inherits: impl Into<Profile>) -> Self {
         Self {
-            inherits,
+            inherits: inherits.into(),
             profile: Default::default(),
         }
     }
